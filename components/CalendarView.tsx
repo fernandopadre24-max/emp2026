@@ -81,11 +81,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ loans, clients }) => {
 
   const getStatusBadgeClasses = (status: Installment['status']) => {
     switch (status) {
-      case 'Paga': return 'bg-success/80 text-white';
-      case 'Atrasada': return 'bg-danger/80 text-white';
-      case 'Parcialmente Paga': return 'bg-warning/80 text-white';
-      case 'Pendente': return 'bg-primary/80 text-white';
-      default: return 'bg-gray-400 text-white';
+      case 'Paga': return 'border border-success text-success bg-success/10';
+      case 'Atrasada': return 'border border-danger text-danger bg-danger/10';
+      case 'Parcialmente Paga': return 'border border-warning text-warning bg-warning/10';
+      case 'Pendente': return 'border border-primary text-primary bg-primary/10';
+      default: return 'border border-surface-300 text-text-secondary bg-surface-300/20';
     }
   };
 
@@ -172,7 +172,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ loans, clients }) => {
                 </div>
                 <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-2rem)]">
                     {dayInstallments.slice(0, 3).map(inst => (
-                         <div key={inst.number + inst.loanCode} title={`${inst.clientName} - ${formatCurrency(inst.amount)}`} className={`text-xs p-1 rounded-md truncate ${getStatusBadgeClasses(inst.status)}`}>
+                         <div key={inst.number + inst.loanCode} title={`${inst.clientName} - ${formatCurrency(inst.amount)}`} className={`text-xs p-1 rounded-md truncate font-semibold ${getStatusBadgeClasses(inst.status)}`}>
                            <span className="hidden sm:inline">{inst.clientName.split(' ')[0]} - </span>{formatCurrency(inst.amount)}
                         </div>
                     ))}
