@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Client, Loan, Account, Installment, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import AmortizationTable from './AmortizationTable';
-import { ChevronDownIcon, ExclamationTriangleIcon, PencilIcon, TrashIcon } from './icons/Icons';
+import { ChevronDownIcon, ExclamationTriangleIcon, PencilIcon, TrashIcon, BuildingLibraryIcon } from './icons/Icons';
 
 interface LoanListProps {
   loans: Loan[];
@@ -23,6 +23,10 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
 
   const getClientName = (clientId: string) => {
     return clients.find(c => c.id === clientId)?.name || 'Cliente desconhecido';
+  };
+  
+  const getAccountName = (accountId: string) => {
+    return accounts.find(a => a.id === accountId)?.name || 'Conta desconhecida';
   };
 
   const toggleExpand = (loanId: string) => {
@@ -101,9 +105,13 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                 <div className="p-6 cursor-pointer hover:bg-surface-200/50" onClick={() => toggleExpand(loan.id)}>
                   <div className="flex justify-between items-start flex-wrap gap-4">
                     <div className="flex-grow">
-                       <div className="flex items-center gap-x-3 mb-1">
+                       <div className="flex items-center gap-x-3 mb-2 flex-wrap gap-y-2">
                         <p className="text-sm font-semibold text-primary">{getClientName(loan.clientId)}</p>
                         <span className="text-xs text-text-secondary font-mono bg-surface-200 px-2 py-0.5 rounded-full">{loan.code}</span>
+                        <div className="flex items-center text-xs text-text-secondary bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                          <BuildingLibraryIcon className="w-3 h-3 mr-1.5" />
+                          <span>{getAccountName(loan.accountId)}</span>
+                        </div>
                          <div className="flex space-x-2">
                             <button onClick={(e) => { e.stopPropagation(); onEdit(loan); }} className="p-1.5 rounded-full hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors" title="Editar Empréstimo">
                               <PencilIcon className="w-4 h-4 text-blue-600" />
