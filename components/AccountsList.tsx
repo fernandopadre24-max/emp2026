@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Account, Transaction, Client } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
-import { BanknotesIcon, ArrowUturnLeftIcon, CurrencyDollarIcon } from './icons/Icons';
+import { BanknotesIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, PencilIcon, TrashIcon, PlusIcon } from './icons/Icons';
 
 interface AccountsListProps {
   accounts: Account[];
   transactions: Transaction[];
   clients: Client[];
+  onEdit: (account: Account) => void;
+  onDelete: (accountId: string) => void;
+  onNewTransaction: (accountId: string) => void;
 }
 
-const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, clients }) => {
+const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, clients, onEdit, onDelete, onNewTransaction }) => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   const renderStatementView = () => {
@@ -22,18 +25,27 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
     
     return (
       <div className="bg-surface-100 rounded-xl shadow-lg p-6 animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-text-primary">{account.name}</h2>
             <p className="text-xl font-semibold text-success">{formatCurrency(account.balance)}</p>
           </div>
-          <button
-            onClick={() => setSelectedAccountId(null)}
-            className="flex items-center px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300 transition-colors"
-          >
-            <ArrowUturnLeftIcon className="w-5 h-5 mr-2" />
-            Voltar para Contas
-          </button>
+          <div className="flex items-center gap-x-4">
+             <button
+              onClick={() => onNewTransaction(account.id)}
+              className="flex items-center px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary-hover transition-colors text-sm font-semibold"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Adicionar Movimento
+            </button>
+            <button
+              onClick={() => setSelectedAccountId(null)}
+              className="flex items-center px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300 transition-colors text-sm font-semibold"
+            >
+              <ArrowUturnLeftIcon className="w-5 h-5 mr-2" />
+              Voltar
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-surface-300">
@@ -47,13 +59,14 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
             <tbody className="bg-surface-100 divide-y divide-surface-300">
               {accountTransactions.length > 0 ? (
                 accountTransactions.map(tx => {
-                  const client = clients.find(c => c.id === tx.clientId);
-                  const description = `Pagamento Parcela #${tx.installmentNumber} - ${client?.name || 'Cliente'}`;
+                  const isPositive = tx.amount >= 0;
                   return (
-                    <tr key={tx.transactionId}>
+                    <tr key={tx.id}>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-text-secondary">{formatDate(tx.date)}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-text-primary">{description}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-success">+{formatCurrency(tx.amount)}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-text-primary">{tx.description}</td>
+                      <td className={`px-4 py-4 whitespace-nowrap text-sm text-right font-medium ${isPositive ? 'text-success' : 'text-danger'}`}>
+                        {isPositive ? '+' : ''}{formatCurrency(tx.amount)}
+                      </td>
                     </tr>
                   )
                 })
@@ -91,7 +104,16 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {accounts.map(account => (
-            <div key={account.id} className="bg-surface-100 rounded-xl shadow-lg p-6 flex flex-col justify-between">
+            <div key={account.id} className="bg-surface-100 rounded-xl shadow-lg p-6 flex flex-col justify-between group relative">
+              <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button onClick={() => onEdit(account)} className="p-2 bg-surface-200 rounded-full hover:bg-primary hover:text-white transition-colors" title="Editar Conta">
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+                <button onClick={() => onDelete(account.id)} className="p-2 bg-surface-200 rounded-full hover:bg-danger hover:text-white transition-colors" title="Excluir Conta">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </div>
+
               <div>
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="p-3 rounded-full bg-blue-500"><BanknotesIcon className="w-8 h-8 text-white" /></div>

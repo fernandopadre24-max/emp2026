@@ -4,19 +4,20 @@ import React, { useState, useMemo } from 'react';
 import { Client, Loan, Account, Installment, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import AmortizationTable from './AmortizationTable';
-import { ChevronDownIcon, ExclamationTriangleIcon } from './icons/Icons';
+import { ChevronDownIcon, ExclamationTriangleIcon, PencilIcon, TrashIcon } from './icons/Icons';
 
 interface LoanListProps {
   loans: Loan[];
   clients: Client[];
   accounts: Account[];
-  // FIX: Update the signature to match the `recordPayment` function in `App.tsx`.
   onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string) => void;
+  onEdit: (loan: Loan) => void;
+  onDelete: (loanId: string) => void;
 }
 
 type LoanFilterStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado';
 
-const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordPayment }) => {
+const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordPayment, onEdit, onDelete }) => {
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<LoanFilterStatus>('Todos');
 
@@ -95,22 +96,29 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
               ? allPayments.reduce((latest, current) => new Date(current.date) > new Date(latest.date) ? current : latest)
               : null;
 
-
             return (
               <div key={loan.id} className="bg-surface-100 rounded-xl shadow-lg overflow-hidden transition-shadow hover:shadow-xl">
                 <div className="p-6 cursor-pointer hover:bg-surface-200/50" onClick={() => toggleExpand(loan.id)}>
-                  <div className="flex justify-between items-center flex-wrap gap-4">
+                  <div className="flex justify-between items-start flex-wrap gap-4">
                     <div className="flex-grow">
-                      <div className="flex items-center gap-x-3">
+                       <div className="flex items-center gap-x-3 mb-1">
                         <p className="text-sm font-semibold text-primary">{getClientName(loan.clientId)}</p>
                         <span className="text-xs text-text-secondary font-mono bg-surface-200 px-2 py-0.5 rounded-full">{loan.code}</span>
+                         <div className="flex space-x-2">
+                            <button onClick={(e) => { e.stopPropagation(); onEdit(loan); }} className="p-1.5 rounded-full hover:bg-primary/20 transition-colors" title="Editar Empréstimo">
+                              <PencilIcon className="w-4 h-4 text-text-secondary" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); onDelete(loan.id); }} className="p-1.5 rounded-full hover:bg-danger/20 transition-colors" title="Excluir Empréstimo">
+                              <TrashIcon className="w-4 h-4 text-text-secondary" />
+                            </button>
+                          </div>
                       </div>
                       <p className="text-xl font-bold text-text-primary">{formatCurrency(loan.principal)}</p>
                       <p className="text-sm text-text-secondary">
                         {loan.installmentsCount} parcelas de ~{formatCurrency(loan.installments[0]?.amount)}
                       </p>
                     </div>
-                    <div className="text-right flex-shrink-0 w-full sm:w-64">
+                    <div className="text-right flex-shrink-0 w-full sm:w-auto">
                       <p className="text-sm text-text-secondary">Início em {formatDate(loan.startDate)}</p>
                       <div className="flex items-center justify-end space-x-2 mt-2">
                         <span className="text-sm font-medium text-text-secondary">{paidInstallments}/{totalInstallments} Pagas</span>
@@ -130,7 +138,7 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                         </div>
                       )}
                     </div>
-                    <div className="pl-4">
+                    <div className="pl-4 flex items-center">
                         <button className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
                         <ChevronDownIcon className="w-6 h-6 text-gray-500" />
                         </button>

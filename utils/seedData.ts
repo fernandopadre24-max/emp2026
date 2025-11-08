@@ -74,9 +74,43 @@ const createSeedData = () => {
   ];
 
   const seedTransactions: Transaction[] = [
-    { ...payment1_1, transactionId: `txn_${payment1_1.id}`, loanId: 'loan_1', clientId: 'client_1', installmentNumber: 1 },
-    { ...payment1_2, transactionId: `txn_${payment1_2.id}`, loanId: 'loan_1', clientId: 'client_1', installmentNumber: 1 },
-    { ...payment2_1, transactionId: `txn_${payment2_1.id}`, loanId: 'loan_1', clientId: 'client_1', installmentNumber: 2 },
+    {
+      id: `txn_${payment1_1.id}`,
+      accountId: payment1_1.accountId,
+      amount: payment1_1.amount,
+      date: payment1_1.date,
+      type: 'payment',
+      description: 'Pag. Parcela #1 - João da Silva',
+      loanId: 'loan_1',
+      clientId: 'client_1',
+      installmentNumber: 1,
+      method: payment1_1.method,
+    },
+    {
+      id: `txn_${payment1_2.id}`,
+      accountId: payment1_2.accountId,
+      amount: payment1_2.amount,
+      date: payment1_2.date,
+      type: 'payment',
+      description: 'Pag. Parcela #1 - João da Silva',
+      loanId: 'loan_1',
+      clientId: 'client_1',
+      installmentNumber: 1,
+      method: payment1_2.method,
+    },
+     {
+      id: `txn_${payment2_1.id}`,
+      accountId: payment2_1.accountId,
+      amount: payment2_1.amount,
+      date: payment2_1.date,
+      type: 'payment',
+      description: 'Pag. Parcela #2 - João da Silva',
+      loanId: 'loan_1',
+      clientId: 'client_1',
+      installmentNumber: 2,
+      method: payment2_1.method,
+      pixKey: payment2_1.pixKey
+    },
   ];
 
   return { seedClients, seedAccounts, seedLoans, seedTransactions };

@@ -43,11 +43,21 @@ export interface Account {
   balance: number;
 }
 
-export interface Transaction extends Payment {
-  transactionId: string;
-  loanId: string;
-  clientId: string;
-  installmentNumber: number;
+export interface Transaction {
+  id: string;
+  accountId: string;
+  amount: number; // positive for income, negative for outcome
+  date: string; // ISO string
+  type: 'payment' | 'deposit' | 'withdrawal';
+  description: string;
+  
+  // Optional fields specific to payment type
+  loanId?: string;
+  clientId?: string;
+  installmentNumber?: number;
+  method?: 'Dinheiro' | 'Transferência' | 'PIX';
+  pixKey?: string;
 }
+
 
 export type View = 'dashboard' | 'loans' | 'clients' | 'accounts' | 'calculator';
