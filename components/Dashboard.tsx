@@ -17,7 +17,7 @@ type LoanStatusVisibility = {
     overdue: boolean;
     paidOff: boolean;
 };
-type LoanStatusChartType = 'donut' | 'bar';
+type LoanStatusChartType = 'pie' | 'bar';
 
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
@@ -33,7 +33,7 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
 const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, accounts }) => {
     const [revenueFilter, setRevenueFilter] = useState<RevenueFilter>('6m');
     const [statusVisibility, setStatusVisibility] = useState<LoanStatusVisibility>({ onTime: true, overdue: true, paidOff: true });
-    const [loanStatusChartType, setLoanStatusChartType] = useState<LoanStatusChartType>('donut');
+    const [loanStatusChartType, setLoanStatusChartType] = useState<LoanStatusChartType>('pie');
 
     const totalPrincipal = loans.reduce((sum, loan) => sum + loan.principal, 0);
     const totalReceivable = loans.reduce((sum, loan) => {
@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
     
     const LoanStatusChartFilter = () => {
         const filters: {key: LoanStatusChartType, label: string}[] = [
-            { key: 'donut', label: 'Rosca' },
+            { key: 'pie', label: 'Pizza' },
             { key: 'bar', label: 'Barra' },
         ];
         return (
@@ -162,32 +162,29 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         );
     };
 
-    const DonutChart = () => {
-        const radius = 15.91549430918954;
+    const PieChart = () => {
         const paidOffOffset = 0;
         const onTimeOffset = filteredLoanStatusData.paidOff.percent;
         const overdueOffset = filteredLoanStatusData.paidOff.percent + filteredLoanStatusData.onTime.percent;
 
         return (
-            <svg width="150" height="150" viewBox="0 0 36 36" className="relative">
-                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#e2e8f0" strokeWidth="3" />
-                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#16a34a" strokeWidth="4"
+            <svg width="150" height="150" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="16" fill="var(--color-surface-300)" />
+                <circle cx="18" cy="18" r="8" fill="transparent" stroke="var(--color-success)" strokeWidth="16"
                     strokeDasharray={`${filteredLoanStatusData.paidOff.percent} 100`}
                     strokeDashoffset={-paidOffOffset}
                     transform="rotate(-90 18 18)"
                     className="transition-all duration-500" />
-                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#2563eb" strokeWidth="4"
+                <circle cx="18" cy="18" r="8" fill="transparent" stroke="var(--color-primary)" strokeWidth="16"
                     strokeDasharray={`${filteredLoanStatusData.onTime.percent} 100`}
                     strokeDashoffset={-onTimeOffset}
                     transform="rotate(-90 18 18)"
                     className="transition-all duration-500" />
-                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#dc2626" strokeWidth="4"
+                <circle cx="18" cy="18" r="8" fill="transparent" stroke="var(--color-danger)" strokeWidth="16"
                     strokeDasharray={`${filteredLoanStatusData.overdue.percent} 100`}
                     strokeDashoffset={-overdueOffset}
                     transform="rotate(-90 18 18)"
                     className="transition-all duration-500" />
-                <text x="18" y="20" className="text-lg font-bold fill-current text-text-primary" textAnchor="middle">{filteredLoanStatusData.total}</text>
-                <text x="18" y="15" className="text-xs fill-current text-text-secondary" textAnchor="middle">Visíveis</text>
             </svg>
         );
     };
@@ -275,7 +272,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
                 <LoanStatusChartFilter />
               </div>
               <div className="flex items-center justify-center space-x-8">
-                {loanStatusChartType === 'donut' ? <DonutChart /> : <BarChart />}
+                {loanStatusChartType === 'pie' ? <PieChart /> : <BarChart />}
                 <LoanStatusLegend />
               </div>
           </div>
