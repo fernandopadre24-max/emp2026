@@ -1,0 +1,5 @@
+{
+  "name": "Gestor de Empréstimos",
+  "description": "Um aplicativo para gerenciar empréstimos a longo prazo com juros e uma lista de clientes. Calcule tabelas de amortização, acompanhe pagamentos e visualize o status financeiro geral.",
+  "requestFramePermissions": []
+}
