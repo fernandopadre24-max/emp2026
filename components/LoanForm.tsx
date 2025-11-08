@@ -110,7 +110,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
             return;
         }
         const newLoanData: Omit<Loan, 'id'> = {
-          code: `EMP-${Date.now().toString().slice(-5)}`,
+          code: `EMP-${(Date.now() % 10000).toString().padStart(4, '0')}`,
           clientId,
           accountId,
           principal: p,
