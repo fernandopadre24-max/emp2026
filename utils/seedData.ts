@@ -3,8 +3,8 @@ import { calculateAmortization } from './loanCalculator';
 
 // Initial data for clients
 export const initialClients: Client[] = [
-  { id: '1', name: 'João da Silva', cpf: '123.456.789-00', phone: '(11) 98765-4321', address: 'Rua das Flores, 123' },
-  { id: '2', name: 'Maria Oliveira', cpf: '987.654.321-00', phone: '(21) 91234-5678', address: 'Avenida Brasil, 456' },
+  { id: '1', name: 'João da Silva', cpf: '12345678900', phone: '11987654321', address: 'Rua das Flores, 123' },
+  { id: '2', name: 'Maria Oliveira', cpf: '98765432100', phone: '21912345678', address: 'Avenida Brasil, 456' },
 ];
 
 // Initial data for accounts - balance recalculated based on all seed transactions

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Client } from '../types';
+import { formatCPF, formatPhone } from '../utils/formatters';
 
 interface ClientFormProps {
   addClient: (client: Omit<Client, 'id'>) => void;
@@ -22,6 +23,20 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
       setAddress(clientToEdit.address);
     }
   }, [clientToEdit]);
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    if (rawValue.length <= 11) {
+      setCpf(rawValue);
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+     if (rawValue.length <= 11) {
+      setPhone(rawValue);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,11 +65,11 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
       </div>
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">CPF</label>
-        <input type="text" value={cpf} onChange={(e) => setCpf(e.target.value)} className={inputStyles} required />
+        <input type="text" value={formatCPF(cpf)} onChange={handleCpfChange} className={inputStyles} placeholder="000.000.000-00" required />
       </div>
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">Telefone</label>
-        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputStyles} required />
+        <input type="tel" value={formatPhone(phone)} onChange={handlePhoneChange} className={inputStyles} placeholder="(00) 00000-0000" required />
       </div>
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">Endereço</label>

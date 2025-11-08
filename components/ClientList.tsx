@@ -1,6 +1,7 @@
 import React from 'react';
 import { Client } from '../types';
 import { UserIcon, PhoneIcon, MapPinIcon, HashtagIcon, PencilIcon, TrashIcon, PlusIcon } from './icons/Icons';
+import { formatCPF, formatPhone } from '../utils/formatters';
 
 interface ClientListProps {
   clients: Client[];
@@ -52,11 +53,11 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete, onNe
               <div className="space-y-2 border-t border-surface-300 pt-4">
                 <div className="flex items-center text-sm text-text-secondary">
                   <HashtagIcon className="w-5 h-5 mr-3 text-gray-400 shrink-0" />
-                  <span>{client.cpf}</span>
+                  <span>{formatCPF(client.cpf)}</span>
                 </div>
                 <div className="flex items-center text-sm text-text-secondary">
                   <PhoneIcon className="w-5 h-5 mr-3 text-gray-400 shrink-0" />
-                  <span>{client.phone}</span>
+                  <span>{formatPhone(client.phone)}</span>
                 </div>
                 <div className="flex items-center text-sm text-text-secondary">
                   <MapPinIcon className="w-5 h-5 mr-3 text-gray-400 shrink-0" />
