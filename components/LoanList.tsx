@@ -105,11 +105,11 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                         <p className="text-sm font-semibold text-primary">{getClientName(loan.clientId)}</p>
                         <span className="text-xs text-text-secondary font-mono bg-surface-200 px-2 py-0.5 rounded-full">{loan.code}</span>
                          <div className="flex space-x-2">
-                            <button onClick={(e) => { e.stopPropagation(); onEdit(loan); }} className="p-1.5 rounded-full hover:bg-primary/20 transition-colors" title="Editar Empréstimo">
-                              <PencilIcon className="w-4 h-4 text-text-secondary" />
+                            <button onClick={(e) => { e.stopPropagation(); onEdit(loan); }} className="p-1.5 rounded-full hover:bg-blue-100 transition-colors" title="Editar Empréstimo">
+                              <PencilIcon className="w-4 h-4 text-blue-600" />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); onDelete(loan.id); }} className="p-1.5 rounded-full hover:bg-danger/20 transition-colors" title="Excluir Empréstimo">
-                              <TrashIcon className="w-4 h-4 text-text-secondary" />
+                            <button onClick={(e) => { e.stopPropagation(); onDelete(loan.id); }} className="p-1.5 rounded-full hover:bg-red-100 transition-colors" title="Excluir Empréstimo">
+                              <TrashIcon className="w-4 h-4 text-red-600" />
                             </button>
                           </div>
                       </div>

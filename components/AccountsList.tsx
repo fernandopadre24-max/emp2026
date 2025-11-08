@@ -106,11 +106,11 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
           {accounts.map(account => (
             <div key={account.id} className="bg-surface-100 rounded-xl shadow-lg p-6 flex flex-col justify-between group relative">
               <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <button onClick={() => onEdit(account)} className="p-2 bg-surface-200 rounded-full hover:bg-primary hover:text-white transition-colors" title="Editar Conta">
-                  <PencilIcon className="w-4 h-4" />
+                <button onClick={() => onEdit(account)} className="p-2 rounded-full hover:bg-blue-100 transition-colors" title="Editar Conta">
+                  <PencilIcon className="w-4 h-4 text-blue-600" />
                 </button>
-                <button onClick={() => onDelete(account.id)} className="p-2 bg-surface-200 rounded-full hover:bg-danger hover:text-white transition-colors" title="Excluir Conta">
-                  <TrashIcon className="w-4 h-4" />
+                <button onClick={() => onDelete(account.id)} className="p-2 rounded-full hover:bg-red-100 transition-colors" title="Excluir Conta">
+                  <TrashIcon className="w-4 h-4 text-red-600" />
                 </button>
               </div>
 
