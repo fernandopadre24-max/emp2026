@@ -20,7 +20,7 @@ const loan2Installments = calculateAmortization(10000, 0.025, 24, '2024-03-01');
 export const initialLoans: Loan[] = [
   {
     id: 'loan1',
-    code: 'EMP-001',
+    code: 'EMP-00001',
     clientId: '1',
     accountId: 'acc1',
     principal: 5000,
@@ -37,7 +37,7 @@ export const initialLoans: Loan[] = [
   },
   {
     id: 'loan2',
-    code: 'EMP-002',
+    code: 'EMP-00002',
     clientId: '2',
     accountId: 'acc1',
     principal: 10000,
