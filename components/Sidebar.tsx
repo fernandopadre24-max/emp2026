@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../types';
-import { ChartBarIcon, BanknotesIcon, UserGroupIcon, BuildingLibraryIcon, CurrencyDollarIcon, PlusIcon } from './icons/Icons';
+import { ChartBarIcon, BanknotesIcon, UserGroupIcon, BuildingLibraryIcon, CalculatorIcon, PlusIcon } from './icons/Icons';
 
 interface SidebarProps {
   currentView: View;
@@ -14,12 +14,11 @@ const NavLink: React.FC<{
   viewName: View;
   currentView: View;
   onNavigate: (view: View) => void;
-  // FIX: Specified that the icon element accepts a className prop to resolve React.cloneElement type error.
   icon: React.ReactElement<{ className?: string }>;
   children: React.ReactNode;
 }> = ({ viewName, currentView, onNavigate, icon, children }) => {
   const isActive = currentView === viewName;
-  const linkClasses = `flex items-center px-4 py-3 text-text-secondary hover:bg-primary-hover/10 hover:text-primary rounded-lg transition-colors group ${
+  const linkClasses = `flex items-center px-4 py-3 text-text-secondary dark:text-text-secondary-dark hover:bg-primary-hover/10 hover:text-primary rounded-lg transition-colors group ${
     isActive ? 'bg-primary/10 text-primary font-semibold' : ''
   }`;
   const iconClasses = `w-6 h-6 text-gray-400 group-hover:text-primary transition-colors ${
@@ -37,8 +36,8 @@ const NavLink: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onNewClient, onNewLoan, onNewAccount }) => {
   return (
-    <aside className="w-64 bg-surface-100 shadow-lg flex flex-col p-4 space-y-4 shrink-0 h-full">
-      <div className="flex space-x-2">
+    <aside className="w-64 bg-surface-100 dark:bg-surface-100-dark shadow-lg flex flex-col p-4 space-y-4 shrink-0 h-full border-r border-surface-300 dark:border-surface-300-dark">
+      <div className="flex space-x-2 border-b border-surface-300 dark:border-surface-300-dark pb-4">
         <button 
           onClick={onNewClient} 
           title="Novo Cliente" 
@@ -64,13 +63,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onNewClient,
           <span>Conta</span>
         </button>
       </div>
-
-      <div className="flex items-center space-x-3 p-2 border-b border-surface-300 pb-4">
-        <div className="p-2 bg-primary rounded-lg">
-          <CurrencyDollarIcon className="w-6 h-6 text-white" />
-        </div>
-        <h1 className="text-xl font-bold text-primary">Gestor Financeiro</h1>
-      </div>
       
       <nav className="flex-grow space-y-2">
         <NavLink viewName="dashboard" currentView={currentView} onNavigate={onNavigate} icon={<ChartBarIcon />}>
@@ -84,6 +76,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onNewClient,
         </NavLink>
         <NavLink viewName="accounts" currentView={currentView} onNavigate={onNavigate} icon={<BuildingLibraryIcon />}>
           Contas
+        </NavLink>
+         <NavLink viewName="calculator" currentView={currentView} onNavigate={onNavigate} icon={<CalculatorIcon />}>
+          Calculadora
         </NavLink>
       </nav>
 

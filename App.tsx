@@ -4,10 +4,12 @@ import useLocalStorage from './hooks/useLocalStorage';
 import createSeedData from './utils/seedData';
 import { updateInstallmentStatus } from './utils/loanCalculator';
 import Sidebar from './components/Sidebar';
+import TopHeader from './components/TopHeader';
 import Dashboard from './components/Dashboard';
 import ClientList from './components/ClientList';
 import LoanList from './components/LoanList';
 import AccountsList from './components/AccountsList';
+import Calculator from './components/Calculator';
 import Modal from './components/Modal';
 import ClientForm from './components/ClientForm';
 import LoanForm from './components/LoanForm';
@@ -18,11 +20,21 @@ const App: React.FC = () => {
   const [loans, setLoans] = useLocalStorage<Loan[]>('loans', () => createSeedData().seedLoans);
   const [accounts, setAccounts] = useLocalStorage<Account[]>('accounts', () => createSeedData().seedAccounts);
   const [transactions, setTransactions] = useLocalStorage<Transaction[]>('transactions', () => createSeedData().seedTransactions);
+  const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
 
   const [view, setView] = useState<View>('dashboard');
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
 
   useEffect(() => {
     setLoans(prevLoans => prevLoans.map(loan => ({
@@ -77,7 +89,6 @@ const App: React.FC = () => {
       return newLoans;
     });
 
-    // FIX: Use callback form of setState to ensure we have the latest state.
     setAccounts(prevAccounts => prevAccounts.map(acc => 
       acc.id === accountId ? { ...acc, balance: acc.balance + amount } : acc
     ));
@@ -109,6 +120,8 @@ const App: React.FC = () => {
         return <ClientList clients={clients} />;
       case 'accounts':
         return <AccountsList accounts={accounts} transactions={transactions} clients={clients} />;
+      case 'calculator':
+        return <Calculator />;
       default:
         return <Dashboard loans={loans} clients={clients} transactions={transactions} />;
     }
@@ -123,9 +136,16 @@ const App: React.FC = () => {
         onNewLoan={() => setIsLoanModalOpen(true)}
         onNewAccount={() => setIsAccountModalOpen(true)}
       />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <MainContent />
-      </main>
+      <div className="flex-1 flex flex-col overflow-y-hidden">
+        <TopHeader 
+          currentTheme={theme} 
+          onThemeToggle={() => setTheme(theme === 'light' ? 'dark' : 'light')} 
+        />
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <MainContent />
+        </main>
+      </div>
+
 
       <Modal isOpen={isClientModalOpen} onClose={() => setIsClientModalOpen(false)} title="Novo Cliente">
         <ClientForm addClient={addClient} closeModal={() => setIsClientModalOpen(false)} />

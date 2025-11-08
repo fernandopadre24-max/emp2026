@@ -50,4 +50,4 @@ export interface Transaction extends Payment {
   installmentNumber: number;
 }
 
-export type View = 'dashboard' | 'loans' | 'clients' | 'accounts';
+export type View = 'dashboard' | 'loans' | 'clients' | 'accounts' | 'calculator';

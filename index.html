@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -15,12 +16,30 @@
               'primary-focus': '#1e3a8a',
               secondary: '#166534',
               'secondary-hover': '#15803d',
-              background: '#f1f5f9',
-              'surface-100': '#ffffff',
-              'surface-200': '#f8fafc',
-              'surface-300': '#e2e8f0',
-              'text-primary': '#1e293b',
-              'text-secondary': '#475569',
+              background: {
+                DEFAULT: '#f1f5f9',
+                dark: '#0f172a'
+              },
+              'surface-100': {
+                DEFAULT: '#ffffff',
+                dark: '#1e293b'
+              },
+              'surface-200': {
+                DEFAULT: '#f8fafc',
+                dark: '#334155'
+              },
+              'surface-300': {
+                DEFAULT: '#e2e8f0',
+                dark: '#475569'
+              },
+              'text-primary': {
+                DEFAULT: '#1e293b',
+                dark: '#f1f5f9'
+              },
+              'text-secondary': {
+                DEFAULT: '#475569',
+                dark: '#94a3b8'
+              },
               success: '#16a34a',
               warning: '#f97316',
               danger: '#dc2626',
@@ -40,7 +59,7 @@
 }
 </script>
   </head>
-  <body class="bg-background text-text-primary antialiased">
+  <body class="bg-background text-text-primary antialiased dark:bg-background-dark dark:text-text-primary-dark">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
