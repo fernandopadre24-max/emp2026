@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import Calendar from './Calendar';
 import { formatDate } from '../utils/loanCalculator';
@@ -6,15 +6,28 @@ import { formatDate } from '../utils/loanCalculator';
 interface TransactionFormProps {
     accountId: string;
     addTransaction: (transaction: Omit<Transaction, 'id' | 'loanId' | 'clientId' | 'installmentNumber' | 'method' | 'pixKey'>) => void;
+    updateTransaction: (transaction: Transaction) => void;
+    transactionToEdit: Transaction | null;
     closeModal: () => void;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ accountId, addTransaction, closeModal }) => {
+const TransactionForm: React.FC<TransactionFormProps> = ({ accountId, addTransaction, updateTransaction, transactionToEdit, closeModal }) => {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [type, setType] = useState<'deposit' | 'withdrawal'>('deposit');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [error, setError] = useState('');
+    
+    const isEditMode = !!transactionToEdit;
+
+    useEffect(() => {
+        if (transactionToEdit) {
+            setDescription(transactionToEdit.description);
+            setAmount(String(Math.abs(transactionToEdit.amount)));
+            setType(transactionToEdit.amount >= 0 ? 'deposit' : 'withdrawal');
+            setDate(transactionToEdit.date.split('T')[0]);
+        }
+    }, [transactionToEdit]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,14 +40,25 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ accountId, addTransac
         }
 
         const finalAmount = type === 'deposit' ? numericAmount : -numericAmount;
-
-        addTransaction({
-            accountId,
-            amount: finalAmount,
-            date,
-            type,
-            description,
-        });
+        
+        if (isEditMode) {
+            const updatedTransaction: Transaction = {
+                ...transactionToEdit,
+                description,
+                amount: finalAmount,
+                date,
+                type
+            };
+            updateTransaction(updatedTransaction);
+        } else {
+            addTransaction({
+                accountId,
+                amount: finalAmount,
+                date,
+                type,
+                description,
+            });
+        }
 
         closeModal();
     };
@@ -89,7 +113,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ accountId, addTransac
             
             <div className="flex justify-end space-x-2 pt-4">
                 <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover">Salvar Movimento</button>
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover">
+                    {isEditMode ? 'Atualizar Movimento' : 'Salvar Movimento'}
+                </button>
             </div>
         </form>
     );

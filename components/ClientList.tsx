@@ -31,11 +31,11 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete, onNe
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {clients.map(client => (
             <div key={client.id} className="bg-surface-100 rounded-xl shadow-lg p-6 space-y-4 transition-all hover:shadow-xl hover:-translate-y-1 relative group">
-              <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <button onClick={() => onEdit(client)} className="p-2 rounded-full hover:bg-blue-100 transition-colors" title="Editar Cliente">
+              <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                <button onClick={() => onEdit(client)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors" title="Editar Cliente">
                   <PencilIcon className="w-4 h-4 text-blue-600" />
                 </button>
-                <button onClick={() => onDelete(client.id)} className="p-2 rounded-full hover:bg-red-100 transition-colors" title="Excluir Cliente">
+                <button onClick={() => onDelete(client.id)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors" title="Excluir Cliente">
                   <TrashIcon className="w-4 h-4 text-red-600" />
                 </button>
               </div>

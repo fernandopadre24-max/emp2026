@@ -1,119 +1,68 @@
 import { Client, Loan, Account, Transaction } from '../types';
 import { calculateAmortization } from './loanCalculator';
 
-const createSeedData = () => {
-  const seedClients: Client[] = [
-    {
-      id: 'client_1',
-      name: 'João da Silva',
-      cpf: '123.456.789-00',
-      phone: '(11) 98765-4321',
-      address: 'Rua das Flores, 123, São Paulo, SP',
-    },
-    {
-      id: 'client_2',
-      name: 'Maria Oliveira',
-      cpf: '987.654.321-00',
-      phone: '(21) 91234-5678',
-      address: 'Avenida Copacabana, 456, Rio de Janeiro, RJ',
-    },
-  ];
+// Initial data for clients
+export const initialClients: Client[] = [
+  { id: '1', name: 'João da Silva', cpf: '123.456.789-00', phone: '(11) 98765-4321', address: 'Rua das Flores, 123' },
+  { id: '2', name: 'Maria Oliveira', cpf: '987.654.321-00', phone: '(21) 91234-5678', address: 'Avenida Brasil, 456' },
+];
 
-  const seedAccounts: Account[] = [
-    {
-      id: 'account_1',
-      name: 'Caixa Principal',
-      balance: 15000.00,
-    },
-    {
-      id: 'account_2',
-      name: 'Investimentos',
-      balance: 50000.00,
-    }
-  ];
+// Initial data for accounts
+export const initialAccounts: Account[] = [
+  { id: 'acc1', name: 'Conta Principal', balance: 15880.50 },
+  { id: 'acc2', name: 'Poupança', balance: 50000 },
+];
 
-  const today = new Date();
-  const startDate1 = new Date(today.getFullYear(), today.getMonth() - 2, 15).toISOString().split('T')[0];
-  const installments1 = calculateAmortization(5000, 0.03, 12, startDate1);
+// Initial data for loans
+const loan1Installments = calculateAmortization(5000, 0.03, 12, '2024-01-15');
+const loan2Installments = calculateAmortization(10000, 0.025, 24, '2024-03-01');
 
-  // Pagamentos para o primeiro empréstimo
-  const payment1_1 = { id: `payment_${Date.now()}_1`, amount: 250, date: new Date(today.getFullYear(), today.getMonth() - 1, 10).toISOString(), accountId: 'account_1', method: 'Transferência' as const };
-  const payment1_2 = { id: `payment_${Date.now()}_2`, amount: installments1[0].amount - 250, date: new Date(today.getFullYear(), today.getMonth() - 1, 14).toISOString(), accountId: 'account_1', method: 'Transferência' as const };
-  const payment2_1 = { id: `payment_${Date.now()}_3`, amount: installments1[1].amount, date: new Date(today.getFullYear(), today.getMonth(), 13).toISOString(), accountId: 'account_1', method: 'PIX' as const, pixKey: 'joao@email.com' };
-  
-  installments1[0].payments.push(payment1_1, payment1_2);
-  installments1[0].status = 'Paga';
+export const initialLoans: Loan[] = [
+  {
+    id: 'loan1',
+    code: 'EMP-001',
+    clientId: '1',
+    principal: 5000,
+    interestRate: 3,
+    installmentsCount: 12,
+    startDate: '2024-01-15',
+    installments: loan1Installments.map((inst, i) => {
+        if (i < 3) { // Simulate some paid installments
+            const payment = { id: `p${i}`, amount: inst.amount, date: new Date(2024, i, 15).toISOString(), accountId: 'acc1', method: 'PIX' as const, pixKey: 'joao@email.com' };
+            return { ...inst, status: 'Paga', payments: [payment] };
+        }
+        return inst;
+    }),
+  },
+  {
+    id: 'loan2',
+    code: 'EMP-002',
+    clientId: '2',
+    principal: 10000,
+    interestRate: 2.5,
+    installmentsCount: 24,
+    startDate: '2024-03-01',
+    installments: loan2Installments,
+  },
+];
 
-  installments1[1].payments.push(payment2_1);
-  installments1[1].status = 'Paga';
-  
-  const startDate2 = new Date(today.getFullYear(), today.getMonth() - 5, 5).toISOString().split('T')[0];
-  const installments2 = calculateAmortization(12000, 0.025, 24, startDate2);
-  
-  const seedLoans: Loan[] = [
-    {
-      id: 'loan_1',
-      code: 'EMP-001',
-      clientId: 'client_1',
-      principal: 5000,
-      interestRate: 3,
-      installmentsCount: 12,
-      startDate: startDate1,
-      installments: installments1,
-    },
-    {
-      id: 'loan_2',
-      code: 'EMP-002',
-      clientId: 'client_2',
-      principal: 12000,
-      interestRate: 2.5,
-      installmentsCount: 24,
-      startDate: startDate2,
-      installments: installments2,
-    },
-  ];
-
-  const seedTransactions: Transaction[] = [
-    {
-      id: `txn_${payment1_1.id}`,
-      accountId: payment1_1.accountId,
-      amount: payment1_1.amount,
-      date: payment1_1.date,
-      type: 'payment',
-      description: 'Pag. Parcela #1 - João da Silva',
-      loanId: 'loan_1',
-      clientId: 'client_1',
-      installmentNumber: 1,
-      method: payment1_1.method,
-    },
-    {
-      id: `txn_${payment1_2.id}`,
-      accountId: payment1_2.accountId,
-      amount: payment1_2.amount,
-      date: payment1_2.date,
-      type: 'payment',
-      description: 'Pag. Parcela #1 - João da Silva',
-      loanId: 'loan_1',
-      clientId: 'client_1',
-      installmentNumber: 1,
-      method: payment1_2.method,
-    },
-     {
-      id: `txn_${payment2_1.id}`,
-      accountId: payment2_1.accountId,
-      amount: payment2_1.amount,
-      date: payment2_1.date,
-      type: 'payment',
-      description: 'Pag. Parcela #2 - João da Silva',
-      loanId: 'loan_1',
-      clientId: 'client_1',
-      installmentNumber: 2,
-      method: payment2_1.method,
-      pixKey: payment2_1.pixKey
-    },
-  ];
-
-  return { seedClients, seedAccounts, seedLoans, seedTransactions };
-};
-
-export default createSeedData;
+// Initial data for transactions based on the initial paid installments
+export const initialTransactions: Transaction[] = initialLoans
+  .flatMap(loan => 
+    loan.installments
+    .filter(inst => inst.status === 'Paga')
+    .flatMap(inst => inst.payments.map(p => ({
+        id: `tx_${p.id}`,
+        accountId: p.accountId,
+        amount: p.amount,
+        date: p.date,
+        type: 'payment' as const,
+        description: `Pag. Parcela #${inst.number} - ${initialClients.find(c => c.id === loan.clientId)?.name}`,
+        loanId: loan.id,
+        clientId: loan.clientId,
+        installmentNumber: inst.number,
+        method: p.method,
+        pixKey: p.pixKey,
+    })))
+  )
+  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Client, Loan, Account, Transaction, View, Payment } from './types';
+import React, { useState, useEffect } from 'react';
+import { Client, Loan, Account, Transaction, View, Payment, Installment } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
-import createSeedData from './utils/seedData';
+import { initialClients, initialLoans, initialAccounts, initialTransactions } from './utils/seedData';
 import { updateInstallmentStatus } from './utils/loanCalculator';
 import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
@@ -17,10 +17,11 @@ import AccountForm from './components/AccountForm';
 import TransactionForm from './components/TransactionForm';
 
 const App: React.FC = () => {
-  const [clients, setClients] = useLocalStorage<Client[]>('clients', () => createSeedData().seedClients);
-  const [loans, setLoans] = useLocalStorage<Loan[]>('loans', () => createSeedData().seedLoans);
-  const [accounts, setAccounts] = useLocalStorage<Account[]>('accounts', () => createSeedData().seedAccounts);
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('transactions', () => createSeedData().seedTransactions);
+  const [clients, setClients] = useLocalStorage<Client[]>('clients', initialClients);
+  const [loans, setLoans] = useLocalStorage<Loan[]>('loans', initialLoans);
+  const [accounts, setAccounts] = useLocalStorage<Account[]>('accounts', initialAccounts);
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('transactions', initialTransactions);
+  
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
 
   const [view, setView] = useState<View>('dashboard');
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [accountForNewTransaction, setAccountForNewTransaction] = useState<string | null>(null);
 
   const [confirmation, setConfirmation] = useState({ isOpen: false, message: '', onConfirm: () => {} });
@@ -46,16 +48,29 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Update loan statuses on load
   useEffect(() => {
     setLoans(prevLoans => prevLoans.map(loan => ({
       ...loan,
-      installments: updateInstallmentStatus(loan.installments),
+      installments: updateInstallmentStatus(loan.installments)
     })));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Helper function to centralize balance updates
+  const updateAccountBalance = (accountId: string, amountChange: number) => {
+    setAccounts(prevAccounts =>
+      prevAccounts.map(acc =>
+        acc.id === accountId
+          ? { ...acc, balance: acc.balance + amountChange }
+          : acc
+      )
+    );
+  };
+
   // Client CRUD
-  const addClient = (client: Omit<Client, 'id'>) => {
-    const newClient: Client = { ...client, id: `client_${Date.now()}` };
+  const addClient = (clientData: Omit<Client, 'id'>) => {
+    const newClient: Client = { id: `client_${Date.now()}`, ...clientData };
     setClients(prev => [...prev, newClient]);
   };
   const updateClient = (client: Client) => {
@@ -81,14 +96,16 @@ const App: React.FC = () => {
   };
   
   // Loan CRUD
-  const addLoan = (loan: Loan) => {
-    setLoans(prev => [...prev, loan]);
+  const addLoan = (loanData: Omit<Loan, 'id'>) => {
+    const newLoan: Loan = { id: `loan_${Date.now()}`, ...loanData };
+    setLoans(prev => [...prev, newLoan]);
   };
   const updateLoan = (loan: Loan) => {
     setLoans(prev => prev.map(l => l.id === loan.id ? loan : l));
   };
   const deleteLoan = (loanId: string) => {
     setLoans(prev => prev.filter(l => l.id !== loanId));
+    // Also delete related transactions
     setTransactions(prev => prev.filter(t => t.loanId !== loanId));
   };
   const handleEditLoan = (loan: Loan) => {
@@ -104,8 +121,8 @@ const App: React.FC = () => {
   }
 
   // Account CRUD
-  const addAccount = (account: Omit<Account, 'id'>) => {
-    const newAccount: Account = { ...account, id: `account_${Date.now()}` };
+  const addAccount = (accountData: Omit<Account, 'id'>) => {
+    const newAccount: Account = { id: `acc_${Date.now()}`, ...accountData };
     setAccounts(prev => [...prev, newAccount]);
   };
   const updateAccount = (account: Account) => {
@@ -133,70 +150,125 @@ const App: React.FC = () => {
   // Transaction logic
   const addTransaction = (transactionData: Omit<Transaction, 'id' | 'loanId' | 'clientId' | 'installmentNumber' | 'method' | 'pixKey'>) => {
       const newTransaction: Transaction = {
-          ...transactionData,
-          id: `txn_${Date.now()}`
+        id: `tx_${Date.now()}`,
+        ...transactionData,
       };
       setTransactions(prev => [...prev, newTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      setAccounts(prev => prev.map(acc => 
-          acc.id === newTransaction.accountId 
-              ? { ...acc, balance: acc.balance + newTransaction.amount }
-              : acc
-      ));
+      updateAccountBalance(newTransaction.accountId, newTransaction.amount);
+  };
+  
+  const updateTransaction = (updatedTransaction: Transaction) => {
+    const oldTransaction = transactions.find(t => t.id === updatedTransaction.id);
+    if (!oldTransaction) return;
+
+    // This logic assumes the accountId of the transaction does not change.
+    const amountDifference = updatedTransaction.amount - oldTransaction.amount;
+    
+    setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
+    updateAccountBalance(updatedTransaction.accountId, amountDifference);
+  };
+  
+  const deleteTransaction = (transactionId: string) => {
+    const transactionToDelete = transactions.find(t => t.id === transactionId);
+    if (!transactionToDelete) return;
+
+    // If it's a loan payment, also update the loan record
+    if (transactionToDelete.type === 'payment' && transactionToDelete.loanId) {
+        const paymentIdToDelete = transactionToDelete.id.replace('tx_', '');
+        setLoans(prevLoans => prevLoans.map(loan => {
+            if (loan.id === transactionToDelete.loanId) {
+                const updatedInstallments = loan.installments.map(inst => {
+                    const paymentExists = inst.payments.some(p => p.id === paymentIdToDelete);
+                    if (paymentExists) {
+                        const updatedPayments = inst.payments.filter(p => p.id !== paymentIdToDelete);
+                        const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+                        const remaining = inst.amount - totalPaid;
+                        let newStatus: Installment['status'] = 'Pendente';
+                        if (totalPaid > 0) {
+                            newStatus = remaining < 0.01 ? 'Paga' : 'Parcialmente Paga';
+                        }
+                        
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const dueDate = new Date(inst.dueDate);
+                        dueDate.setUTCHours(0,0,0,0);
+                        if (newStatus !== 'Paga' && dueDate < today) {
+                            newStatus = 'Atrasada';
+                        }
+
+                        return { ...inst, payments: updatedPayments, status: newStatus };
+                    }
+                    return inst;
+                });
+                return { ...loan, installments: updatedInstallments };
+            }
+            return loan;
+        }));
+    }
+
+    setTransactions(prev => prev.filter(t => t.id !== transactionId));
+    updateAccountBalance(transactionToDelete.accountId, -transactionToDelete.amount);
+  };
+  
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setIsTransactionModalOpen(true);
+  };
+  
+  const handleDeleteTransaction = (transactionId: string) => {
+    setConfirmation({
+      isOpen: true,
+      message: 'Tem certeza que deseja excluir esta movimentação? O saldo da conta e o status do empréstimo (se aplicável) serão ajustados.',
+      onConfirm: () => deleteTransaction(transactionId),
+    });
   };
 
   const recordPayment = (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string) => {
-    const paymentId = `payment_${Date.now()}`;
-    
-    let paidLoan: Loan | undefined;
-    setLoans(prevLoans => {
-      const newLoans = prevLoans.map(loan => {
-        if (loan.id === loanId) {
-          const newInstallments = loan.installments.map(inst => {
-            if (inst.number === installmentNumber) {
-              const newPayment: Payment = { id: paymentId, amount, date: new Date().toISOString(), accountId, method, pixKey };
-              const updatedPayments = [...inst.payments, newPayment];
-              const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
-              const remaining = inst.amount - totalPaid;
-              
-              let newStatus: typeof inst.status = 'Parcialmente Paga';
-              if (remaining < 0.01) {
-                newStatus = 'Paga';
-              }
-              
-              return { ...inst, payments: updatedPayments, status: newStatus };
-            }
-            return inst;
-          });
-          const updatedLoan = { ...loan, installments: newInstallments };
-          paidLoan = updatedLoan;
-          return updatedLoan;
-        }
-        return loan;
-      });
-      return newLoans;
-    });
+    const loanToUpdate = loans.find(l => l.id === loanId);
+    const accountToUpdate = accounts.find(a => a.id === accountId);
 
-    setAccounts(prevAccounts => prevAccounts.map(acc => 
-      acc.id === accountId ? { ...acc, balance: acc.balance + amount } : acc
-    ));
-    
-    if (paidLoan) {
-      const clientName = clients.find(c => c.id === paidLoan!.clientId)?.name || 'Cliente';
-      const newTransaction: Transaction = {
-        id: `txn_${paymentId}`,
-        accountId,
-        loanId,
-        clientId: paidLoan.clientId,
-        installmentNumber,
-        amount,
-        date: new Date().toISOString(),
-        type: 'payment',
-        description: `Pag. Parcela #${installmentNumber} - ${clientName}`,
-        method,
-        pixKey,
-      };
-      setTransactions(prev => [...prev, newTransaction]);
+    if (!loanToUpdate || !accountToUpdate) {
+      alert("Empréstimo ou conta não encontrada.");
+      return;
     }
+
+    const paymentId = `payment_${Date.now()}`;
+    let updatedLoan = { ...loanToUpdate };
+
+    // Update loan with new payment
+    updatedLoan.installments = updatedLoan.installments.map(inst => {
+      if (inst.number === installmentNumber) {
+        const newPayment: Payment = { id: paymentId, amount, date: new Date().toISOString(), accountId, method, pixKey };
+        const updatedPayments = [...inst.payments, newPayment];
+        const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+        const remaining = inst.amount - totalPaid;
+        let newStatus: typeof inst.status = remaining < 0.01 ? 'Paga' : 'Parcialmente Paga';
+        return { ...inst, payments: updatedPayments, status: newStatus };
+      }
+      return inst;
+    });
+    
+    setLoans(prev => prev.map(l => l.id === loanId ? updatedLoan : l));
+
+    // Update account balance
+    updateAccountBalance(accountId, amount);
+
+    // Create new transaction record
+    const clientName = clients.find(c => c.id === updatedLoan!.clientId)?.name || 'Cliente';
+    const newTransaction: Transaction = {
+      id: `tx_${paymentId}`,
+      accountId,
+      loanId,
+      clientId: updatedLoan.clientId,
+      installmentNumber,
+      amount,
+      date: new Date().toISOString(),
+      type: 'payment',
+      description: `Pag. Parcela #${installmentNumber} - ${clientName}`,
+      method,
+      pixKey,
+    };
+    setTransactions(prev => [...prev, newTransaction]);
   };
   
   const openTransactionModal = (accountId: string) => {
@@ -205,21 +277,13 @@ const App: React.FC = () => {
   };
 
   // Modal handlers
-  const closeClientModal = () => {
-    setIsClientModalOpen(false);
-    setEditingClient(null);
-  };
-  const closeLoanModal = () => {
-    setIsLoanModalOpen(false);
-    setEditingLoan(null);
-  };
-  const closeAccountModal = () => {
-    setIsAccountModalOpen(false);
-    setEditingAccount(null);
-  };
-  const closeTransactionModal = () => {
-    setAccountForNewTransaction(null);
-    setIsTransactionModalOpen(false);
+  const closeClientModal = () => { setIsClientModalOpen(false); setEditingClient(null); };
+  const closeLoanModal = () => { setIsLoanModalOpen(false); setEditingLoan(null); };
+  const closeAccountModal = () => { setIsAccountModalOpen(false); setEditingAccount(null); };
+  const closeTransactionModal = () => { 
+    setAccountForNewTransaction(null); 
+    setEditingTransaction(null);
+    setIsTransactionModalOpen(false); 
   }
 
   const MainContent = () => {
@@ -231,7 +295,16 @@ const App: React.FC = () => {
       case 'clients':
         return <ClientList clients={clients} onEdit={handleEditClient} onDelete={handleDeleteClient} onNewClient={() => setIsClientModalOpen(true)} />;
       case 'accounts':
-        return <AccountsList accounts={accounts} transactions={transactions} clients={clients} onEdit={handleEditAccount} onDelete={handleDeleteAccount} onNewTransaction={openTransactionModal} />;
+        return <AccountsList 
+          accounts={accounts} 
+          transactions={transactions} 
+          clients={clients} 
+          onEdit={handleEditAccount} 
+          onDelete={handleDeleteAccount} 
+          onNewTransaction={openTransactionModal}
+          onEditTransaction={handleEditTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          />;
       case 'calculator':
         return <Calculator />;
       default:
@@ -257,13 +330,11 @@ const App: React.FC = () => {
         </main>
       </div>
 
-
       <Modal isOpen={isClientModalOpen} onClose={closeClientModal} title={editingClient ? "Editar Cliente" : "Novo Cliente"}>
         <ClientForm addClient={addClient} updateClient={updateClient} clientToEdit={editingClient} closeModal={closeClientModal} />
       </Modal>
 
       <Modal isOpen={isLoanModalOpen} onClose={closeLoanModal} title={editingLoan ? "Editar Empréstimo" : "Novo Empréstimo"}>
-        {/* FIX: Changed `closeModal` to `closeLoanModal` to pass the correct modal closing function. */}
         <LoanForm clients={clients} addLoan={addLoan} updateLoan={updateLoan} loanToEdit={editingLoan} closeModal={closeLoanModal} />
       </Modal>
 
@@ -271,10 +342,16 @@ const App: React.FC = () => {
         <AccountForm addAccount={addAccount} updateAccount={updateAccount} accountToEdit={editingAccount} closeModal={closeAccountModal} />
       </Modal>
 
-      <Modal isOpen={isTransactionModalOpen && !!accountForNewTransaction} onClose={closeTransactionModal} title="Adicionar Movimento">
+      <Modal 
+        isOpen={isTransactionModalOpen && (!!accountForNewTransaction || !!editingTransaction)} 
+        onClose={closeTransactionModal} 
+        title={editingTransaction ? "Editar Movimento" : "Adicionar Movimento"}
+      >
         <TransactionForm
-          accountId={accountForNewTransaction!}
+          accountId={accountForNewTransaction || editingTransaction?.accountId!}
           addTransaction={addTransaction}
+          updateTransaction={updateTransaction}
+          transactionToEdit={editingTransaction}
           closeModal={closeTransactionModal}
         />
       </Modal>

@@ -10,9 +10,11 @@ interface AccountsListProps {
   onEdit: (account: Account) => void;
   onDelete: (accountId: string) => void;
   onNewTransaction: (accountId: string) => void;
+  onEditTransaction: (transaction: Transaction) => void;
+  onDeleteTransaction: (transactionId: string) => void;
 }
 
-const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, clients, onEdit, onDelete, onNewTransaction }) => {
+const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, clients, onEdit, onDelete, onNewTransaction, onEditTransaction, onDeleteTransaction }) => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   const renderStatementView = () => {
@@ -54,6 +56,7 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Data</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Descrição</th>
                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">Valor</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="bg-surface-100 divide-y divide-surface-300">
@@ -67,12 +70,24 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
                       <td className={`px-4 py-4 whitespace-nowrap text-sm text-right font-medium ${isPositive ? 'text-success' : 'text-danger'}`}>
                         {isPositive ? '+' : ''}{formatCurrency(tx.amount)}
                       </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
+                         <div className="flex items-center justify-end space-x-2">
+                            {tx.type !== 'payment' && (
+                                <button onClick={() => onEditTransaction(tx)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors" title="Editar Movimento">
+                                    <PencilIcon className="w-4 h-4 text-blue-600" />
+                                </button>
+                            )}
+                            <button onClick={() => onDeleteTransaction(tx.id)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors" title="Excluir Movimento">
+                                <TrashIcon className="w-4 h-4 text-red-600" />
+                            </button>
+                         </div>
+                      </td>
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td colSpan={3} className="text-center py-8 text-text-secondary">Nenhuma movimentação nesta conta.</td>
+                  <td colSpan={4} className="text-center py-8 text-text-secondary">Nenhuma movimentação nesta conta.</td>
                 </tr>
               )}
             </tbody>
@@ -105,11 +120,11 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {accounts.map(account => (
             <div key={account.id} className="bg-surface-100 rounded-xl shadow-lg p-6 flex flex-col justify-between group relative">
-              <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <button onClick={() => onEdit(account)} className="p-2 rounded-full hover:bg-blue-100 transition-colors" title="Editar Conta">
+              <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                <button onClick={() => onEdit(account)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors" title="Editar Conta">
                   <PencilIcon className="w-4 h-4 text-blue-600" />
                 </button>
-                <button onClick={() => onDelete(account.id)} className="p-2 rounded-full hover:bg-red-100 transition-colors" title="Excluir Conta">
+                <button onClick={() => onDelete(account.id)} className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors" title="Excluir Conta">
                   <TrashIcon className="w-4 h-4 text-red-600" />
                 </button>
               </div>

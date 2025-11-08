@@ -5,7 +5,7 @@ import Calendar from './Calendar';
 
 interface LoanFormProps {
   clients: Client[];
-  addLoan: (loan: Loan) => void;
+  addLoan: (loan: Omit<Loan, 'id'>) => void;
   updateLoan: (loan: Loan) => void;
   loanToEdit: Loan | null;
   closeModal: () => void;
@@ -90,8 +90,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
             alert("Não foi possível calcular as parcelas. Verifique se os valores inseridos são realistas.");
             return;
         }
-        const newLoan: Loan = {
-          id: `loan_${Date.now()}`,
+        const newLoanData: Omit<Loan, 'id'> = {
           code: `EMP-${Date.now().toString().slice(-6)}`,
           clientId,
           principal: p,
@@ -100,7 +99,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
           startDate,
           installments,
         };
-        addLoan(newLoan);
+        addLoan(newLoanData);
     }
 
     closeModal();
