@@ -225,7 +225,7 @@ const App: React.FC = () => {
   const MainContent = () => {
     switch(view) {
       case 'dashboard':
-        return <Dashboard loans={loans} clients={clients} transactions={transactions} />;
+        return <Dashboard loans={loans} clients={clients} transactions={transactions} accounts={accounts} />;
       case 'loans':
         return <LoanList loans={loans} clients={clients} accounts={accounts} onRecordPayment={recordPayment} onEdit={handleEditLoan} onDelete={handleDeleteLoan} />;
       case 'clients':
@@ -235,7 +235,7 @@ const App: React.FC = () => {
       case 'calculator':
         return <Calculator />;
       default:
-        return <Dashboard loans={loans} clients={clients} transactions={transactions} />;
+        return <Dashboard loans={loans} clients={clients} transactions={transactions} accounts={accounts} />;
     }
   }
 

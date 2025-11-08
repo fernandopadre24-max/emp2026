@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Loan, Client, Transaction } from '../types';
+import { Loan, Client, Transaction, Account } from '../types';
 import { formatCurrency } from '../utils/loanCalculator';
 import RecentMovements from './RecentMovements';
 import { UserGroupIcon, CurrencyDollarIcon, BanknotesIcon, ChartBarIcon, EyeIcon, EyeSlashIcon } from './icons/Icons';
@@ -8,6 +8,7 @@ interface DashboardProps {
   loans: Loan[];
   clients: Client[];
   transactions: Transaction[];
+  accounts: Account[];
 }
 
 type RevenueFilter = '6m' | '12m' | 'ytd';
@@ -29,7 +30,7 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
     </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions }) => {
+const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, accounts }) => {
     const [revenueFilter, setRevenueFilter] = useState<RevenueFilter>('6m');
     const [statusVisibility, setStatusVisibility] = useState<LoanStatusVisibility>({ onTime: true, overdue: true, paidOff: true });
     const [loanStatusChartType, setLoanStatusChartType] = useState<LoanStatusChartType>('donut');
@@ -300,7 +301,31 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions }) =
           </div>
       </div>
 
-      <RecentMovements transactions={transactions} clients={clients} loans={loans} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <RecentMovements transactions={transactions} clients={clients} loans={loans} />
+        <div className="bg-surface-100 rounded-xl shadow-lg p-6">
+          <h3 className="text-xl font-semibold mb-4 text-text-primary">Resumo das Contas</h3>
+          {accounts.length > 0 ? (
+            <ul className="divide-y divide-surface-300">
+              {accounts.map(account => (
+                <li key={account.id} className="py-4 flex justify-between items-center">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-full">
+                      <BanknotesIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <p className="font-medium text-text-primary">{account.name}</p>
+                  </div>
+                  <p className="font-semibold text-lg text-success">{formatCurrency(account.balance)}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-text-secondary">Nenhuma conta cadastrada.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </>
   );
 };
