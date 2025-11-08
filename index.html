@@ -5,68 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gestor de Empréstimos</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --color-primary: #1d4ed8;
+        --color-primary-hover: #2563eb;
+        --color-primary-focus: #1e3a8a;
+        --color-secondary: #166534;
+        --color-secondary-hover: #15803d;
+        --color-background: #f1f5f9;
+        --color-surface-100: #ffffff;
+        --color-surface-200: #f8fafc;
+        --color-surface-300: #e2e8f0;
+        --color-text-primary: #1e293b;
+        --color-text-secondary: #475569;
+        --color-success: #16a34a;
+        --color-warning: #f97316;
+        --color-danger: #dc2626;
+      }
+      .dark {
+        --color-primary: #60a5fa;
+        --color-primary-hover: #3b82f6;
+        --color-primary-focus: #93c5fd;
+        --color-secondary: #22c55e;
+        --color-secondary-hover: #4ade80;
+        --color-background: #0f172a;
+        --color-surface-100: #1e293b;
+        --color-surface-200: #334155;
+        --color-surface-300: #475569;
+        --color-text-primary: #f1f5f9;
+        --color-text-secondary: #94a3b8;
+        --color-success: #4ade80;
+        --color-warning: #fb923c;
+        --color-danger: #f87171;
+      }
+    </style>
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             colors: {
-              primary: {
-                DEFAULT: '#1d4ed8',
-                dark: '#60a5fa',
-              },
-              'primary-hover': {
-                DEFAULT: '#2563eb',
-                dark: '#3b82f6',
-              },
-              'primary-focus': {
-                DEFAULT: '#1e3a8a',
-                dark: '#93c5fd',
-              },
-              secondary: {
-                DEFAULT: '#166534',
-                dark: '#22c55e',
-              },
-              'secondary-hover': {
-                DEFAULT: '#15803d',
-                dark: '#4ade80',
-              },
-              background: {
-                DEFAULT: '#f1f5f9',
-                dark: '#0f172a'
-              },
-              'surface-100': {
-                DEFAULT: '#ffffff',
-                dark: '#1e293b'
-              },
-              'surface-200': {
-                DEFAULT: '#f8fafc',
-                dark: '#334155'
-              },
-              'surface-300': {
-                DEFAULT: '#e2e8f0',
-                dark: '#475569'
-              },
-              'text-primary': {
-                DEFAULT: '#1e293b',
-                dark: '#f1f5f9'
-              },
-              'text-secondary': {
-                DEFAULT: '#475569',
-                dark: '#94a3b8'
-              },
-              success: {
-                DEFAULT: '#16a34a',
-                dark: '#4ade80',
-              },
-              warning: {
-                DEFAULT: '#f97316',
-                dark: '#fb923c',
-              },
-              danger: {
-                DEFAULT: '#dc2626',
-                dark: '#f87171',
-              },
+              primary: 'var(--color-primary)',
+              'primary-hover': 'var(--color-primary-hover)',
+              'primary-focus': 'var(--color-primary-focus)',
+              secondary: 'var(--color-secondary)',
+              'secondary-hover': 'var(--color-secondary-hover)',
+              background: 'var(--color-background)',
+              'surface-100': 'var(--color-surface-100)',
+              'surface-200': 'var(--color-surface-200)',
+              'surface-300': 'var(--color-surface-300)',
+              'text-primary': 'var(--color-text-primary)',
+              'text-secondary': 'var(--color-text-secondary)',
+              success: 'var(--color-success)',
+              warning: 'var(--color-warning)',
+              danger: 'var(--color-danger)',
             },
           },
         },
