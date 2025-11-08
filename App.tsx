@@ -354,6 +354,7 @@ const App: React.FC = () => {
           onThemeToggle={() => setTheme(theme === 'light' ? 'dark' : 'light')} 
           onNewLoan={() => setIsLoanModalOpen(true)}
           onNewAccount={() => setIsAccountModalOpen(true)}
+          onNavigate={setView}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <MainContent />

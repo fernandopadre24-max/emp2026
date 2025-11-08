@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../types';
-import { ChartBarIcon, BanknotesIcon, UserGroupIcon, BuildingLibraryIcon, CalculatorIcon, CalendarDaysIcon } from './icons/Icons';
+import { ChartBarIcon, BanknotesIcon, UserGroupIcon, BuildingLibraryIcon, CalendarDaysIcon } from './icons/Icons';
 
 interface SidebarProps {
   currentView: View;
@@ -46,9 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
         </NavLink>
         <NavLink viewName="accounts" currentView={currentView} onNavigate={onNavigate} icon={<BuildingLibraryIcon />}>
           Contas
-        </NavLink>
-         <NavLink viewName="calculator" currentView={currentView} onNavigate={onNavigate} icon={<CalculatorIcon />}>
-          Calculadora
         </NavLink>
         <NavLink viewName="calendar" currentView={currentView} onNavigate={onNavigate} icon={<CalendarDaysIcon />}>
           Calendário

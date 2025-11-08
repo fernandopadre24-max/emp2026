@@ -1,14 +1,16 @@
 import React from 'react';
-import { SunIcon, MoonIcon, CurrencyDollarIcon, PlusIcon } from './icons/Icons';
+import { View } from '../types';
+import { SunIcon, MoonIcon, CurrencyDollarIcon, PlusIcon, CalculatorIcon } from './icons/Icons';
 
 interface TopHeaderProps {
   currentTheme: 'light' | 'dark';
   onThemeToggle: () => void;
   onNewLoan: () => void;
   onNewAccount: () => void;
+  onNavigate: (view: View) => void;
 }
 
-const TopHeader: React.FC<TopHeaderProps> = ({ currentTheme, onThemeToggle, onNewLoan, onNewAccount }) => {
+const TopHeader: React.FC<TopHeaderProps> = ({ currentTheme, onThemeToggle, onNewLoan, onNewAccount, onNavigate }) => {
   return (
     <header className="flex items-center justify-between p-4 border-b border-surface-300 bg-surface-100 shrink-0">
         <div className="flex items-center space-x-3">
@@ -31,6 +33,13 @@ const TopHeader: React.FC<TopHeaderProps> = ({ currentTheme, onThemeToggle, onNe
         >
           <PlusIcon className="w-5 h-5" />
           <span>Nova Conta</span>
+        </button>
+        <button
+          onClick={() => onNavigate('calculator')}
+          className="p-2 rounded-full text-text-secondary hover:bg-surface-200 transition-colors"
+          aria-label="Abrir calculadora"
+        >
+          <CalculatorIcon className="w-6 h-6" />
         </button>
         <button
           onClick={onThemeToggle}
