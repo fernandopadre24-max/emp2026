@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Client, Loan } from '../types';
-import { calculateAmortization, formatDate } from '../utils/loanCalculator';
+import { Client, Loan, Account } from '../types';
+import { calculateAmortization, formatDate, formatCurrency } from '../utils/loanCalculator';
 import Calendar from './Calendar';
 
 interface LoanFormProps {
   clients: Client[];
+  accounts: Account[];
   addLoan: (loan: Omit<Loan, 'id'>) => void;
   updateLoan: (loan: Loan) => void;
   loanToEdit: Loan | null;
   closeModal: () => void;
 }
 
-const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanToEdit, closeModal }) => {
+const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateLoan, loanToEdit, closeModal }) => {
   const [clientId, setClientId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [principal, setPrincipal] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [installmentsCount, setInstallmentsCount] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [error, setError] = useState('');
   
   const isEditMode = !!loanToEdit;
   const hasPayments = isEditMode && loanToEdit.installments.some(i => i.payments.length > 0);
@@ -27,14 +30,16 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
   useEffect(() => {
     if (loanToEdit) {
       setClientId(loanToEdit.clientId);
+      setAccountId(loanToEdit.accountId);
       setPrincipal(String(loanToEdit.principal));
       setInterestRate(String(loanToEdit.interestRate));
       setInstallmentsCount(String(loanToEdit.installmentsCount));
       setStartDate(loanToEdit.startDate);
     } else {
         setClientId(clients[0]?.id || '');
+        setAccountId(accounts[0]?.id || '');
     }
-  }, [loanToEdit, clients]);
+  }, [loanToEdit, clients, accounts]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,15 +55,29 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
     const p = parseFloat(principal);
     const ir = parseFloat(interestRate);
     const ic = parseInt(installmentsCount, 10);
 
-    if(!clientId || isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
-        alert("Por favor, preencha todos os campos com valores numéricos positivos e válidos.");
+    if(!clientId || !accountId || isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
+        setError("Por favor, preencha todos os campos com valores numéricos positivos e válidos.");
         return;
     }
+
+    if (!isEditMode) {
+      const selectedAccount = accounts.find(acc => acc.id === accountId);
+      if (!selectedAccount) {
+          setError("Conta selecionada não encontrada.");
+          return;
+      }
+      if (selectedAccount.balance < p) {
+          setError(`Saldo insuficiente na conta "${selectedAccount.name}". Saldo disponível: ${formatCurrency(selectedAccount.balance)}.`);
+          return;
+      }
+    }
+
 
     if (isEditMode) {
         // Para edição, apenas alguns campos podem ser alterados
@@ -87,12 +106,13 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
     } else {
         const installments = calculateAmortization(p, ir / 100, ic, startDate);
         if (installments.length === 0) {
-            alert("Não foi possível calcular as parcelas. Verifique se os valores inseridos são realistas.");
+            setError("Não foi possível calcular as parcelas. Verifique se os valores inseridos são realistas.");
             return;
         }
         const newLoanData: Omit<Loan, 'id'> = {
           code: `EMP-${Date.now().toString().slice(-6)}`,
           clientId,
+          accountId,
           principal: p,
           interestRate: ir,
           installmentsCount: ic,
@@ -117,6 +137,16 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
             <option key={client.id} value={client.id}>{client.name}</option>
           ))}
         </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-text-secondary mb-1">Conta de Saída</label>
+        <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputStyles} required disabled={isEditMode || accounts.length === 0}>
+            {accounts.length === 0 ? <option>Nenhuma conta cadastrada</option> : <option value="" disabled>Selecione uma conta</option>}
+            {accounts.map(account => (
+            <option key={account.id} value={account.id}>{account.name} ({formatCurrency(account.balance)})</option>
+            ))}
+        </select>
+        {isEditMode && <p className="text-xs text-text-secondary mt-1">A conta de origem não pode ser alterada após a criação.</p>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -157,9 +187,10 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, updateLoan, loanT
         </div>
       </div>
       {hasPayments && <p className="text-sm text-amber-600">Campos principais não podem ser editados pois este empréstimo já possui pagamentos registrados.</p>}
+      {error && <p className="text-sm text-danger mt-2">{error}</p>}
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300">Cancelar</button>
-        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover" disabled={clients.length === 0}>{isEditMode ? 'Atualizar Empréstimo' : 'Criar Empréstimo'}</button>
+        <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover" disabled={clients.length === 0 || accounts.length === 0}>{isEditMode ? 'Atualizar Empréstimo' : 'Criar Empréstimo'}</button>
       </div>
     </form>
   );

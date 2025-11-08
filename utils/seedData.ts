@@ -7,9 +7,9 @@ export const initialClients: Client[] = [
   { id: '2', name: 'Maria Oliveira', cpf: '987.654.321-00', phone: '(21) 91234-5678', address: 'Avenida Brasil, 456' },
 ];
 
-// Initial data for accounts
+// Initial data for accounts - balance recalculated based on all seed transactions
 export const initialAccounts: Account[] = [
-  { id: 'acc1', name: 'Conta Principal', balance: 15880.50 },
+  { id: 'acc1', name: 'Conta Principal', balance: 16454.61 },
   { id: 'acc2', name: 'Poupança', balance: 50000 },
 ];
 
@@ -22,6 +22,7 @@ export const initialLoans: Loan[] = [
     id: 'loan1',
     code: 'EMP-001',
     clientId: '1',
+    accountId: 'acc1',
     principal: 5000,
     interestRate: 3,
     installmentsCount: 12,
@@ -38,6 +39,7 @@ export const initialLoans: Loan[] = [
     id: 'loan2',
     code: 'EMP-002',
     clientId: '2',
+    accountId: 'acc1',
     principal: 10000,
     interestRate: 2.5,
     installmentsCount: 24,
@@ -47,7 +49,7 @@ export const initialLoans: Loan[] = [
 ];
 
 // Initial data for transactions based on the initial paid installments
-export const initialTransactions: Transaction[] = initialLoans
+const paymentTransactions: Transaction[] = initialLoans
   .flatMap(loan => 
     loan.installments
     .filter(inst => inst.status === 'Paga')
@@ -64,5 +66,19 @@ export const initialTransactions: Transaction[] = initialLoans
         method: p.method,
         pixKey: p.pixKey,
     })))
-  )
+  );
+  
+// Create withdrawal transactions for the initial loans
+const withdrawalTransactions: Transaction[] = initialLoans.map(loan => ({
+    id: `tx_wd_${loan.id}`,
+    accountId: loan.accountId,
+    amount: -loan.principal,
+    date: loan.startDate,
+    type: 'withdrawal' as const,
+    description: `Saída Empréstimo - ${initialClients.find(c => c.id === loan.clientId)?.name} (${loan.code})`,
+    loanId: loan.id,
+    clientId: loan.clientId,
+}));
+
+export const initialTransactions: Transaction[] = [...paymentTransactions, ...withdrawalTransactions]
   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

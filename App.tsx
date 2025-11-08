@@ -98,14 +98,42 @@ const App: React.FC = () => {
   // Loan CRUD
   const addLoan = (loanData: Omit<Loan, 'id'>) => {
     const newLoan: Loan = { id: `loan_${Date.now()}`, ...loanData };
+    const clientName = clients.find(c => c.id === newLoan.clientId)?.name || 'Cliente';
+    
+    const withdrawalTransaction: Transaction = {
+        id: `tx_wd_${newLoan.id}`,
+        accountId: newLoan.accountId,
+        loanId: newLoan.id,
+        clientId: newLoan.clientId,
+        amount: -newLoan.principal,
+        date: newLoan.startDate,
+        type: 'withdrawal',
+        description: `Saída Empréstimo - ${clientName} (${newLoan.code})`,
+    };
+    
     setLoans(prev => [...prev, newLoan]);
+    setTransactions(prev => [...prev, withdrawalTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    updateAccountBalance(newLoan.accountId, -newLoan.principal);
   };
   const updateLoan = (loan: Loan) => {
     setLoans(prev => prev.map(l => l.id === loan.id ? loan : l));
   };
   const deleteLoan = (loanId: string) => {
+    const loanToDelete = loans.find(l => l.id === loanId);
+    if (!loanToDelete) return;
+
+    // Find all transactions associated with this loan
+    const relatedTransactions = transactions.filter(t => t.loanId === loanId);
+    
+    // Calculate the net financial impact on the account
+    const netImpact = relatedTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+    // Revert the net impact on the account balance
+    if (netImpact !== 0) {
+        updateAccountBalance(loanToDelete.accountId, -netImpact);
+    }
+
     setLoans(prev => prev.filter(l => l.id !== loanId));
-    // Also delete related transactions
     setTransactions(prev => prev.filter(t => t.loanId !== loanId));
   };
   const handleEditLoan = (loan: Loan) => {
@@ -115,7 +143,7 @@ const App: React.FC = () => {
   const handleDeleteLoan = (loanId: string) => {
      setConfirmation({
       isOpen: true,
-      message: 'Tem certeza que deseja excluir este empréstimo? Todas as transações associadas serão removidas.',
+      message: 'Tem certeza que deseja excluir este empréstimo? Todas as transações associadas serão removidas e o saldo da conta de origem será ajustado.',
       onConfirm: () => deleteLoan(loanId),
     });
   }
@@ -182,10 +210,9 @@ const App: React.FC = () => {
                     if (paymentExists) {
                         const updatedPayments = inst.payments.filter(p => p.id !== paymentIdToDelete);
                         const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
-                        const remaining = inst.amount - totalPaid;
                         let newStatus: Installment['status'] = 'Pendente';
                         if (totalPaid > 0) {
-                            newStatus = remaining < 0.01 ? 'Paga' : 'Parcialmente Paga';
+                             newStatus = Math.abs(inst.amount - totalPaid) < 0.01 ? 'Paga' : 'Parcialmente Paga';
                         }
                         
                         const today = new Date();
@@ -335,7 +362,7 @@ const App: React.FC = () => {
       </Modal>
 
       <Modal isOpen={isLoanModalOpen} onClose={closeLoanModal} title={editingLoan ? "Editar Empréstimo" : "Novo Empréstimo"}>
-        <LoanForm clients={clients} addLoan={addLoan} updateLoan={updateLoan} loanToEdit={editingLoan} closeModal={closeLoanModal} />
+        <LoanForm clients={clients} accounts={accounts} addLoan={addLoan} updateLoan={updateLoan} loanToEdit={editingLoan} closeModal={closeLoanModal} />
       </Modal>
 
       <Modal isOpen={isAccountModalOpen} onClose={closeAccountModal} title={editingAccount ? "Editar Conta" : "Nova Conta"}>

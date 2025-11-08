@@ -1,3 +1,5 @@
+
+
 export interface Client {
   id: string;
   name: string;
@@ -30,6 +32,7 @@ export interface Loan {
   id: string;
   code: string;
   clientId: string;
+  accountId: string;
   principal: number;
   interestRate: number; // monthly interest rate in percentage
   installmentsCount: number;
