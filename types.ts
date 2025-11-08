@@ -9,7 +9,7 @@ export interface Client {
 }
 
 export interface Payment {
-  id: string;
+  id:string;
   amount: number;
   date: string; // ISO string
   accountId: string;
@@ -63,4 +63,4 @@ export interface Transaction {
 }
 
 
-export type View = 'dashboard' | 'loans' | 'clients' | 'accounts' | 'calculator';
+export type View = 'dashboard' | 'loans' | 'clients' | 'accounts' | 'calculator' | 'calendar';

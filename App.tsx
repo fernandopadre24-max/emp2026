@@ -10,6 +10,7 @@ import ClientList from './components/ClientList';
 import LoanList from './components/LoanList';
 import AccountsList from './components/AccountsList';
 import Calculator from './components/Calculator';
+import CalendarView from './components/CalendarView';
 import Modal from './components/Modal';
 import ClientForm from './components/ClientForm';
 import LoanForm from './components/LoanForm';
@@ -334,6 +335,8 @@ const App: React.FC = () => {
           />;
       case 'calculator':
         return <Calculator />;
+      case 'calendar':
+        return <CalendarView loans={loans} clients={clients} />;
       default:
         return <Dashboard loans={loans} clients={clients} transactions={transactions} accounts={accounts} />;
     }
