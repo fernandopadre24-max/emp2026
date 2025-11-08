@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 // FIX: Import the `Installment` type to resolve a TypeScript error.
-import { Client, Loan, Account, Installment } from '../types';
+// FIX: Import the `Payment` type to correctly type the onRecordPayment prop.
+import { Client, Loan, Account, Installment, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import AmortizationTable from './AmortizationTable';
 import { ChevronDownIcon, ExclamationTriangleIcon } from './icons/Icons';
@@ -9,7 +10,8 @@ interface LoanListProps {
   loans: Loan[];
   clients: Client[];
   accounts: Account[];
-  onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string) => void;
+  // FIX: Update the signature to match the `recordPayment` function in `App.tsx`.
+  onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string) => void;
 }
 
 type LoanFilterStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado';
@@ -87,13 +89,22 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
             const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
             const isExpanded = expandedLoanId === loan.id;
             const hasOverdue = loan.installments.some(i => i.status === 'Atrasada');
+            
+            const allPayments = loan.installments.flatMap(inst => inst.payments);
+            const lastPayment = allPayments.length > 0
+              ? allPayments.reduce((latest, current) => new Date(current.date) > new Date(latest.date) ? current : latest)
+              : null;
+
 
             return (
               <div key={loan.id} className="bg-surface-100 rounded-xl shadow-lg overflow-hidden transition-shadow hover:shadow-xl">
                 <div className="p-6 cursor-pointer hover:bg-surface-200/50" onClick={() => toggleExpand(loan.id)}>
                   <div className="flex justify-between items-center flex-wrap gap-4">
                     <div className="flex-grow">
-                      <p className="text-sm font-semibold text-primary">{getClientName(loan.clientId)}</p>
+                      <div className="flex items-center gap-x-3">
+                        <p className="text-sm font-semibold text-primary">{getClientName(loan.clientId)}</p>
+                        <span className="text-xs text-text-secondary font-mono bg-surface-200 px-2 py-0.5 rounded-full">{loan.code}</span>
+                      </div>
                       <p className="text-xl font-bold text-text-primary">{formatCurrency(loan.principal)}</p>
                       <p className="text-sm text-text-secondary">
                         {loan.installmentsCount} parcelas de ~{formatCurrency(loan.installments[0]?.amount)}
@@ -107,6 +118,11 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                           <div className="bg-success h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
                         </div>
                       </div>
+                      {lastPayment && (
+                        <div className="mt-2 text-xs text-text-secondary">
+                          Último Pgto: <span className="font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">{lastPayment.method}</span> em {formatDate(lastPayment.date)}
+                        </div>
+                      )}
                       {hasOverdue && (
                         <div className="mt-2 flex items-center justify-end text-danger font-semibold">
                           <ExclamationTriangleIcon className="w-5 h-5 mr-1" />
@@ -125,6 +141,7 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                   <div className="p-4 md:p-6 border-t border-surface-300 bg-surface-200/30">
                     <AmortizationTable
                       loanId={loan.id}
+                      loanCode={loan.code}
                       installments={loan.installments}
                       accounts={accounts}
                       onRecordPayment={onRecordPayment}

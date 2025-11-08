@@ -11,6 +11,8 @@ export interface Payment {
   amount: number;
   date: string; // ISO string
   accountId: string;
+  method: 'Dinheiro' | 'Transferência' | 'PIX';
+  pixKey?: string;
 }
 
 export interface Installment {
@@ -26,6 +28,7 @@ export interface Installment {
 
 export interface Loan {
   id: string;
+  code: string;
   clientId: string;
   principal: number;
   interestRate: number; // monthly interest rate in percentage

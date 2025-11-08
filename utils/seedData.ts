@@ -37,9 +37,9 @@ const createSeedData = () => {
   const installments1 = calculateAmortization(5000, 0.03, 12, startDate1);
 
   // Pagamentos para o primeiro empréstimo
-  const payment1_1 = { id: `payment_${Date.now()}_1`, amount: 250, date: new Date(today.getFullYear(), today.getMonth() - 1, 10).toISOString(), accountId: 'account_1' };
-  const payment1_2 = { id: `payment_${Date.now()}_2`, amount: installments1[0].amount - 250, date: new Date(today.getFullYear(), today.getMonth() - 1, 14).toISOString(), accountId: 'account_1' };
-  const payment2_1 = { id: `payment_${Date.now()}_3`, amount: installments1[1].amount, date: new Date(today.getFullYear(), today.getMonth(), 13).toISOString(), accountId: 'account_1' };
+  const payment1_1 = { id: `payment_${Date.now()}_1`, amount: 250, date: new Date(today.getFullYear(), today.getMonth() - 1, 10).toISOString(), accountId: 'account_1', method: 'Transferência' as const };
+  const payment1_2 = { id: `payment_${Date.now()}_2`, amount: installments1[0].amount - 250, date: new Date(today.getFullYear(), today.getMonth() - 1, 14).toISOString(), accountId: 'account_1', method: 'Transferência' as const };
+  const payment2_1 = { id: `payment_${Date.now()}_3`, amount: installments1[1].amount, date: new Date(today.getFullYear(), today.getMonth(), 13).toISOString(), accountId: 'account_1', method: 'PIX' as const, pixKey: 'joao@email.com' };
   
   installments1[0].payments.push(payment1_1, payment1_2);
   installments1[0].status = 'Paga';
@@ -53,6 +53,7 @@ const createSeedData = () => {
   const seedLoans: Loan[] = [
     {
       id: 'loan_1',
+      code: 'EMP-001',
       clientId: 'client_1',
       principal: 5000,
       interestRate: 3,
@@ -62,6 +63,7 @@ const createSeedData = () => {
     },
     {
       id: 'loan_2',
+      code: 'EMP-002',
       clientId: 'client_2',
       principal: 12000,
       interestRate: 2.5,

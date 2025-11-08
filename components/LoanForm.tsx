@@ -36,6 +36,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, addLoan, closeModal }) => 
 
     const newLoan: Loan = {
       id: `loan_${Date.now()}`,
+      code: `EMP-${Date.now().toString().slice(-6)}`,
       clientId,
       principal: p,
       interestRate: ir,

@@ -38,7 +38,34 @@ const NavLink: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onNewClient, onNewLoan, onNewAccount }) => {
   return (
     <aside className="w-64 bg-surface-100 shadow-lg flex flex-col p-4 space-y-4 shrink-0 h-full">
-      <div className="flex items-center space-x-3 p-2 mb-4">
+      <div className="flex space-x-2">
+        <button 
+          onClick={onNewClient} 
+          title="Novo Cliente" 
+          className="flex-1 flex flex-col items-center justify-center text-center bg-secondary text-white font-semibold py-2 px-1 text-xs rounded-lg hover:bg-secondary-hover transition-colors"
+        >
+          <PlusIcon className="w-5 h-5 mb-1" />
+          <span>Cliente</span>
+        </button>
+        <button 
+          onClick={onNewLoan} 
+          title="Novo Empréstimo" 
+          className="flex-1 flex flex-col items-center justify-center text-center bg-primary text-white font-semibold py-2 px-1 text-xs rounded-lg hover:bg-primary-hover transition-colors"
+        >
+          <PlusIcon className="w-5 h-5 mb-1" />
+          <span>Empréstimo</span>
+        </button>
+        <button 
+          onClick={onNewAccount} 
+          title="Nova Conta"
+          className="flex-1 flex flex-col items-center justify-center text-center bg-indigo-500 text-white font-semibold py-2 px-1 text-xs rounded-lg hover:bg-indigo-600 transition-colors"
+        >
+          <PlusIcon className="w-5 h-5 mb-1" />
+          <span>Conta</span>
+        </button>
+      </div>
+
+      <div className="flex items-center space-x-3 p-2 border-b border-surface-300 pb-4">
         <div className="p-2 bg-primary rounded-lg">
           <CurrencyDollarIcon className="w-6 h-6 text-white" />
         </div>
@@ -60,17 +87,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onNewClient,
         </NavLink>
       </nav>
 
-      <div className="space-y-2 border-t border-surface-300 pt-4">
-        <button onClick={onNewClient} className="w-full flex items-center justify-center bg-secondary text-white font-semibold py-2 px-4 rounded-lg hover:bg-secondary-hover transition-colors">
-          <PlusIcon className="w-5 h-5 mr-2" /> Novo Cliente
-        </button>
-        <button onClick={onNewLoan} className="w-full flex items-center justify-center bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-primary-hover transition-colors">
-          <PlusIcon className="w-5 h-5 mr-2" /> Novo Empréstimo
-        </button>
-        <button onClick={onNewAccount} className="w-full flex items-center justify-center bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors">
-          <PlusIcon className="w-5 h-5 mr-2" /> Nova Conta
-        </button>
-      </div>
     </aside>
   );
 };

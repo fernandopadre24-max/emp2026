@@ -7,33 +7,38 @@ import { BanknotesIcon } from './icons/Icons';
 
 interface AmortizationTableProps {
   loanId: string;
+  loanCode: string;
   installments: Installment[];
   accounts: Account[];
   clientName: string;
-  onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string) => void;
+  onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string) => void;
 }
 
 const PaymentForm: React.FC<{
   installment: Installment;
   accounts: Account[];
-  onConfirm: (amount: number, accountId: string) => void;
+  onConfirm: (amount: number, accountId: string, method: Payment['method'], pixKey?: string) => void;
   onCancel: () => void;
 }> = ({ installment, accounts, onConfirm, onCancel }) => {
   const totalPaid = useMemo(() => installment.payments.reduce((sum, p) => sum + p.amount, 0), [installment.payments]);
   const remainingAmount = installment.amount - totalPaid;
   const [amount, setAmount] = useState(remainingAmount.toFixed(2));
   const [accountId, setAccountId] = useState(accounts[0]?.id || '');
+  const [method, setMethod] = useState<Payment['method']>('Dinheiro');
+  const [pixKey, setPixKey] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const paidAmount = parseFloat(amount);
     
+    setError('');
     if (!accountId) { setError("Por favor, selecione uma conta."); return; }
     if (isNaN(paidAmount) || paidAmount <= 0) { setError("O valor do pagamento deve ser positivo."); return; }
     if (paidAmount > remainingAmount + 0.01) { setError(`O valor máximo do pagamento é ${formatCurrency(remainingAmount)}.`); return; }
+    if (method === 'PIX' && !pixKey.trim()) { setError("Por favor, insira a chave PIX."); return; }
     
-    onConfirm(paidAmount, accountId);
+    onConfirm(paidAmount, accountId, method, method === 'PIX' ? pixKey : undefined);
   };
 
   const inputStyles = "w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface-100 text-text-primary";
@@ -52,6 +57,21 @@ const PaymentForm: React.FC<{
           ))}
         </select>
       </div>
+      <div>
+        <label className="block text-sm font-medium text-text-secondary mb-1">Método de Pagamento</label>
+        <select value={method} onChange={(e) => { setMethod(e.target.value as Payment['method']); setError(''); }} className={inputStyles} required>
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Transferência">Transferência</option>
+            <option value="PIX">PIX</option>
+        </select>
+      </div>
+
+      {method === 'PIX' && (
+        <div className="animate-fade-in-up">
+          <label className="block text-sm font-medium text-text-secondary mb-1">Chave PIX</label>
+          <input type="text" value={pixKey} onChange={(e) => { setPixKey(e.target.value); setError(''); }} className={inputStyles} placeholder="CPF, e-mail, telefone, etc." required />
+        </div>
+      )}
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300">Cancelar</button>
@@ -69,11 +89,16 @@ const PaymentHistoryModal: React.FC<{ installment: Installment; accounts: Accoun
        <ul className="divide-y divide-surface-300">
           {installment.payments.map(payment => (
             <li key={payment.id} className="py-3">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-success">{formatCurrency(payment.amount)}</span>
-                <span className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded-full">{getAccountName(payment.accountId)}</span>
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-lg font-bold text-success">{formatCurrency(payment.amount)}</p>
+                  <p className="text-sm text-text-secondary">{formatDate(payment.date)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded-full inline-block">{getAccountName(payment.accountId)}</p>
+                  <p className="text-xs text-text-secondary mt-1">{payment.method}{payment.pixKey ? ` - ${payment.pixKey}` : ''}</p>
+                </div>
               </div>
-              <p className="text-sm text-text-secondary mt-1">{formatDate(payment.date)}</p>
             </li>
           ))}
         </ul>
@@ -82,7 +107,7 @@ const PaymentHistoryModal: React.FC<{ installment: Installment; accounts: Accoun
 };
 
 
-const AmortizationTable: React.FC<AmortizationTableProps> = ({ loanId, installments, accounts, onRecordPayment, clientName }) => {
+const AmortizationTable: React.FC<AmortizationTableProps> = ({ loanId, loanCode, installments, accounts, onRecordPayment, clientName }) => {
   const [paymentModalInstallment, setPaymentModalInstallment] = useState<Installment | null>(null);
   const [historyModalInstallment, setHistoryModalInstallment] = useState<Installment | null>(null);
 
@@ -98,7 +123,7 @@ const AmortizationTable: React.FC<AmortizationTableProps> = ({ loanId, installme
   
   return (
     <>
-      <h3 className="text-lg font-semibold mb-4 text-text-primary">Plano de Amortização - {clientName}</h3>
+      <h3 className="text-lg font-semibold mb-4 text-text-primary">Plano de Amortização - {clientName} ({loanCode})</h3>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-surface-300">
           <thead className="bg-surface-200">
@@ -143,8 +168,8 @@ const AmortizationTable: React.FC<AmortizationTableProps> = ({ loanId, installme
       {paymentModalInstallment && (
         <Modal isOpen={!!paymentModalInstallment} onClose={() => setPaymentModalInstallment(null)} title={`Registrar Pagamento: Parcela #${paymentModalInstallment.number}`}>
           <PaymentForm installment={paymentModalInstallment} accounts={accounts} onCancel={() => setPaymentModalInstallment(null)}
-            onConfirm={(amount, accountId) => {
-              onRecordPayment(loanId, paymentModalInstallment.number, amount, accountId);
+            onConfirm={(amount, accountId, method, pixKey) => {
+              onRecordPayment(loanId, paymentModalInstallment.number, amount, accountId, method, pixKey);
               setPaymentModalInstallment(null);
             }}
           />

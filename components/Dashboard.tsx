@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Loan, Client, Transaction } from '../types';
 import { formatCurrency } from '../utils/loanCalculator';
 import RecentMovements from './RecentMovements';
-import { UserGroupIcon, CurrencyDollarIcon, BanknotesIcon, ChartBarIcon } from './icons/Icons';
+import { UserGroupIcon, CurrencyDollarIcon, BanknotesIcon, ChartBarIcon, EyeIcon, EyeSlashIcon } from './icons/Icons';
 
 interface DashboardProps {
   loans: Loan[];
   clients: Client[];
   transactions: Transaction[];
 }
+
+type RevenueFilter = '6m' | '12m' | 'ytd';
+type LoanStatusVisibility = {
+    onTime: boolean;
+    overdue: boolean;
+    paidOff: boolean;
+};
+type LoanStatusChartType = 'donut' | 'bar';
+
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
     <div className="bg-surface-100 rounded-xl shadow-lg p-6 flex items-center space-x-4">
@@ -21,6 +30,10 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
 );
 
 const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions }) => {
+    const [revenueFilter, setRevenueFilter] = useState<RevenueFilter>('6m');
+    const [statusVisibility, setStatusVisibility] = useState<LoanStatusVisibility>({ onTime: true, overdue: true, paidOff: true });
+    const [loanStatusChartType, setLoanStatusChartType] = useState<LoanStatusChartType>('donut');
+
     const totalPrincipal = loans.reduce((sum, loan) => sum + loan.principal, 0);
     const totalReceivable = loans.reduce((sum, loan) => {
         const totalAmount = loan.installments.reduce((totalSum, inst) => totalSum + inst.amount, 0);
@@ -29,6 +42,200 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions }) =
     }, 0);
     const overdueLoansCount = loans.filter(loan => loan.installments.some(inst => inst.status === 'Atrasada')).length;
     const clientCount = clients.length;
+
+    const loanStatusData = useMemo(() => {
+        let onTime = 0;
+        let overdue = 0;
+        let paidOff = 0;
+
+        loans.forEach(loan => {
+            if (loan.installments.every(i => i.status === 'Paga')) {
+                paidOff++;
+            } else if (loan.installments.some(i => i.status === 'Atrasada')) {
+                overdue++;
+            } else {
+                onTime++;
+            }
+        });
+        
+        return {
+            onTime: { count: onTime },
+            overdue: { count: overdue },
+            paidOff: { count: paidOff },
+        };
+    }, [loans]);
+
+    const filteredLoanStatusData = useMemo(() => {
+        const data = {
+            onTime: statusVisibility.onTime ? loanStatusData.onTime.count : 0,
+            overdue: statusVisibility.overdue ? loanStatusData.overdue.count : 0,
+            paidOff: statusVisibility.paidOff ? loanStatusData.paidOff.count : 0,
+        };
+        const total = data.onTime + data.overdue + data.paidOff || 1;
+        return {
+            onTime: { count: data.onTime, percent: (data.onTime / total) * 100 },
+            overdue: { count: data.overdue, percent: (data.overdue / total) * 100 },
+            paidOff: { count: data.paidOff, percent: (data.paidOff / total) * 100 },
+            total: data.onTime + data.overdue + data.paidOff,
+        };
+    }, [loanStatusData, statusVisibility]);
+
+    const monthlyRevenueData = useMemo(() => {
+        const now = new Date();
+        let months: { label: string; year: number; month: number; total: number; }[] = [];
+
+        if (revenueFilter === '12m') {
+            months = Array.from({ length: 12 }, (_, i) => {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), total: 0 };
+            }).reverse();
+        } else if (revenueFilter === 'ytd') {
+            months = Array.from({ length: now.getMonth() + 1 }, (_, i) => {
+                const d = new Date(now.getFullYear(), i, 1);
+                return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: i, total: 0 };
+            });
+        } else { // 6m default
+            months = Array.from({ length: 6 }, (_, i) => {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), total: 0 };
+            }).reverse();
+        }
+        
+        transactions.forEach(tx => {
+            const txDate = new Date(tx.date);
+            const txYear = txDate.getFullYear();
+            const txMonth = txDate.getMonth();
+
+            const monthData = months.find(m => m.year === txYear && m.month === txMonth);
+            if (monthData) {
+                monthData.total += tx.amount;
+            }
+        });
+
+        const maxRevenue = Math.max(...months.map(m => m.total), 1);
+        return { months, maxRevenue };
+    }, [transactions, revenueFilter]);
+    
+    const LoanStatusChartFilter = () => {
+        const filters: {key: LoanStatusChartType, label: string}[] = [
+            { key: 'donut', label: 'Rosca' },
+            { key: 'bar', label: 'Barra' },
+        ];
+        return (
+            <div className="flex space-x-1 p-0.5 bg-surface-200 rounded-lg">
+                {filters.map(f => (
+                    <button key={f.key} onClick={() => setLoanStatusChartType(f.key)}
+                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                            loanStatusChartType === f.key ? 'bg-white text-primary shadow' : 'text-text-secondary hover:bg-surface-300'
+                        }`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+        )
+    };
+    
+    const LoanStatusLegend = () => {
+        const toggleVisibility = (status: keyof LoanStatusVisibility) => {
+            setStatusVisibility(prev => ({...prev, [status]: !prev[status]}));
+        }
+        return (
+            <div className="space-y-2">
+                <div onClick={() => toggleVisibility('paidOff')} className={`flex items-center cursor-pointer p-1 rounded-md ${!statusVisibility.paidOff ? 'opacity-50' : ''}`}>
+                    <span className="w-3 h-3 rounded-full bg-success mr-2"></span>
+                    <span className="text-sm text-text-secondary flex-1">Quitado ({loanStatusData.paidOff.count})</span>
+                    {statusVisibility.paidOff ? <EyeIcon className="w-4 h-4 ml-2 text-gray-400"/> : <EyeSlashIcon className="w-4 h-4 ml-2 text-gray-400"/>}
+                </div>
+                <div onClick={() => toggleVisibility('onTime')} className={`flex items-center cursor-pointer p-1 rounded-md ${!statusVisibility.onTime ? 'opacity-50' : ''}`}>
+                    <span className="w-3 h-3 rounded-full bg-primary mr-2"></span>
+                    <span className="text-sm text-text-secondary flex-1">Em Dia ({loanStatusData.onTime.count})</span>
+                    {statusVisibility.onTime ? <EyeIcon className="w-4 h-4 ml-2 text-gray-400"/> : <EyeSlashIcon className="w-4 h-4 ml-2 text-gray-400"/>}
+                </div>
+                <div onClick={() => toggleVisibility('overdue')} className={`flex items-center cursor-pointer p-1 rounded-md ${!statusVisibility.overdue ? 'opacity-50' : ''}`}>
+                    <span className="w-3 h-3 rounded-full bg-danger mr-2"></span>
+                    <span className="text-sm text-text-secondary flex-1">Com Atraso ({loanStatusData.overdue.count})</span>
+                    {statusVisibility.overdue ? <EyeIcon className="w-4 h-4 ml-2 text-gray-400"/> : <EyeSlashIcon className="w-4 h-4 ml-2 text-gray-400"/>}
+                </div>
+            </div>
+        );
+    };
+
+    const DonutChart = () => {
+        const radius = 15.91549430918954;
+        const paidOffOffset = 0;
+        const onTimeOffset = filteredLoanStatusData.paidOff.percent;
+        const overdueOffset = filteredLoanStatusData.paidOff.percent + filteredLoanStatusData.onTime.percent;
+
+        return (
+            <svg width="150" height="150" viewBox="0 0 36 36" className="relative">
+                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#e2e8f0" strokeWidth="3" />
+                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#16a34a" strokeWidth="4"
+                    strokeDasharray={`${filteredLoanStatusData.paidOff.percent} 100`}
+                    strokeDashoffset={-paidOffOffset}
+                    transform="rotate(-90 18 18)"
+                    className="transition-all duration-500" />
+                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#2563eb" strokeWidth="4"
+                    strokeDasharray={`${filteredLoanStatusData.onTime.percent} 100`}
+                    strokeDashoffset={-onTimeOffset}
+                    transform="rotate(-90 18 18)"
+                    className="transition-all duration-500" />
+                <circle cx="18" cy="18" r={radius} fill="transparent" stroke="#dc2626" strokeWidth="4"
+                    strokeDasharray={`${filteredLoanStatusData.overdue.percent} 100`}
+                    strokeDashoffset={-overdueOffset}
+                    transform="rotate(-90 18 18)"
+                    className="transition-all duration-500" />
+                <text x="18" y="20" className="text-lg font-bold fill-current text-text-primary" textAnchor="middle">{filteredLoanStatusData.total}</text>
+                <text x="18" y="15" className="text-xs fill-current text-text-secondary" textAnchor="middle">Visíveis</text>
+            </svg>
+        );
+    };
+    
+    const BarChart = () => {
+        const data = [
+            { label: 'Quitado', value: filteredLoanStatusData.paidOff.count, color: 'bg-success' },
+            { label: 'Em Dia', value: filteredLoanStatusData.onTime.count, color: 'bg-primary' },
+            { label: 'Com Atraso', value: filteredLoanStatusData.overdue.count, color: 'bg-danger' },
+        ];
+        const maxValue = Math.max(...data.map(d => d.value), 1);
+
+        return (
+            <div className="flex justify-around items-end h-[150px] w-[150px] space-x-4">
+                {data.map((item, index) => (
+                    <div key={index} className="flex flex-col items-center group w-full h-full">
+                         <div className="relative flex-grow flex items-end w-full">
+                             <div 
+                                 title={`${item.label}: ${item.value}`}
+                                 className={`w-full ${item.color} rounded-t-md hover:opacity-80 transition-all duration-300 cursor-pointer`}
+                                 style={{ height: `${(item.value / maxValue) * 100}%` }}
+                             ></div>
+                         </div>
+                     </div>
+                ))}
+            </div>
+        );
+    };
+
+    const RevenueChartFilter = () => {
+        const filters: {key: RevenueFilter, label: string}[] = [
+            { key: '6m', label: 'Últimos 6M' },
+            { key: '12m', label: 'Últimos 12M' },
+            { key: 'ytd', label: 'Este Ano' },
+        ];
+        return (
+            <div className="flex space-x-1 p-0.5 bg-surface-200 rounded-lg">
+                {filters.map(f => (
+                    <button key={f.key} onClick={() => setRevenueFilter(f.key)}
+                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                            revenueFilter === f.key ? 'bg-white text-primary shadow' : 'text-text-secondary hover:bg-surface-300'
+                        }`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+        )
+    };
 
   return (
     <>
@@ -59,7 +266,41 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions }) =
           color="bg-red-500"
         />
       </div>
-      <RecentMovements transactions={transactions} clients={clients} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="bg-surface-100 rounded-xl shadow-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-text-primary">Situação dos Empréstimos</h3>
+                <LoanStatusChartFilter />
+              </div>
+              <div className="flex items-center justify-center space-x-8">
+                {loanStatusChartType === 'donut' ? <DonutChart /> : <BarChart />}
+                <LoanStatusLegend />
+              </div>
+          </div>
+          <div className="bg-surface-100 rounded-xl shadow-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-text-primary">Receita Mensal</h3>
+                <RevenueChartFilter />
+              </div>
+              <div className="flex justify-around items-end h-48">
+                {monthlyRevenueData.months.map((month, index) => (
+                    <div key={index} className="flex flex-col items-center group w-full">
+                        <div className="relative flex-grow flex items-end w-full px-1">
+                           <div 
+                                title={`${month.label}: ${formatCurrency(month.total)}`}
+                                className="w-full bg-primary/20 rounded-t-md hover:bg-primary transition-all duration-300 cursor-pointer"
+                                style={{ height: `${(month.total / monthlyRevenueData.maxRevenue) * 100}%` }}
+                            ></div>
+                        </div>
+                        <span className="text-xs text-text-secondary mt-2">{month.label}</span>
+                    </div>
+                ))}
+              </div>
+          </div>
+      </div>
+
+      <RecentMovements transactions={transactions} clients={clients} loans={loans} />
     </>
   );
 };
