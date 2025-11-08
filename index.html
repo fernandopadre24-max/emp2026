@@ -11,11 +11,26 @@
         theme: {
           extend: {
             colors: {
-              primary: '#1d4ed8',
-              'primary-hover': '#2563eb',
-              'primary-focus': '#1e3a8a',
-              secondary: '#166534',
-              'secondary-hover': '#15803d',
+              primary: {
+                DEFAULT: '#1d4ed8',
+                dark: '#60a5fa',
+              },
+              'primary-hover': {
+                DEFAULT: '#2563eb',
+                dark: '#3b82f6',
+              },
+              'primary-focus': {
+                DEFAULT: '#1e3a8a',
+                dark: '#93c5fd',
+              },
+              secondary: {
+                DEFAULT: '#166534',
+                dark: '#22c55e',
+              },
+              'secondary-hover': {
+                DEFAULT: '#15803d',
+                dark: '#4ade80',
+              },
               background: {
                 DEFAULT: '#f1f5f9',
                 dark: '#0f172a'
@@ -40,9 +55,18 @@
                 DEFAULT: '#475569',
                 dark: '#94a3b8'
               },
-              success: '#16a34a',
-              warning: '#f97316',
-              danger: '#dc2626',
+              success: {
+                DEFAULT: '#16a34a',
+                dark: '#4ade80',
+              },
+              warning: {
+                DEFAULT: '#f97316',
+                dark: '#fb923c',
+              },
+              danger: {
+                DEFAULT: '#dc2626',
+                dark: '#f87171',
+              },
             },
           },
         },
@@ -59,7 +83,7 @@
 }
 </script>
   </head>
-  <body class="bg-background text-text-primary antialiased dark:bg-background-dark dark:text-text-primary-dark">
+  <body class="bg-background text-text-primary antialiased">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

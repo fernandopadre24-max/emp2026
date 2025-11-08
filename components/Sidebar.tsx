@@ -15,7 +15,7 @@ const NavLink: React.FC<{
   children: React.ReactNode;
 }> = ({ viewName, currentView, onNavigate, icon, children }) => {
   const isActive = currentView === viewName;
-  const linkClasses = `flex items-center px-4 py-3 text-text-secondary dark:text-text-secondary-dark hover:bg-primary-hover/10 hover:text-primary rounded-lg transition-colors group ${
+  const linkClasses = `flex items-center px-4 py-3 text-text-secondary hover:bg-primary-hover/10 hover:text-primary rounded-lg transition-colors group ${
     isActive ? 'bg-primary/10 text-primary font-semibold' : ''
   }`;
   const iconClasses = `w-6 h-6 text-gray-400 group-hover:text-primary transition-colors ${
@@ -33,7 +33,7 @@ const NavLink: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   return (
-    <aside className="w-64 bg-surface-100 dark:bg-surface-100-dark shadow-lg flex flex-col p-4 space-y-4 shrink-0 h-full border-r border-surface-300 dark:border-surface-300-dark">
+    <aside className="w-64 bg-surface-100 shadow-lg flex flex-col p-4 space-y-4 shrink-0 h-full border-r border-surface-300">
       <nav className="flex-grow space-y-2 pt-4">
         <NavLink viewName="dashboard" currentView={currentView} onNavigate={onNavigate} icon={<ChartBarIcon />}>
           Painel de Controle

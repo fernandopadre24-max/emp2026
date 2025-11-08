@@ -69,14 +69,17 @@ const Calculator: React.FC = () => {
     setWaitingForOperand(true);
   };
 
-  const CalculatorButton = ({
-    onClick,
-    children,
-    className = '',
-  }: {
+  // FIX: Refactored component definition to use a typed interface and React.FC, resolving a TypeScript error where the 'children' prop was not being recognized.
+  interface CalculatorButtonProps {
     onClick: () => void;
     children: React.ReactNode;
     className?: string;
+  }
+
+  const CalculatorButton: React.FC<CalculatorButtonProps> = ({
+    onClick,
+    children,
+    className = '',
   }) => (
     <button
       onClick={onClick}
@@ -88,9 +91,9 @@ const Calculator: React.FC = () => {
 
   return (
     <>
-      <h1 className="text-3xl font-bold mb-6 text-text-primary dark:text-text-primary-dark">Calculadora</h1>
-      <div className="max-w-xs mx-auto bg-surface-100 dark:bg-surface-100-dark rounded-xl shadow-2xl p-4 space-y-4">
-        <div className="bg-background dark:bg-background-dark text-text-primary dark:text-text-primary-dark text-right text-4xl font-mono p-4 rounded-lg overflow-x-auto">
+      <h1 className="text-3xl font-bold mb-6 text-text-primary">Calculadora</h1>
+      <div className="max-w-xs mx-auto bg-surface-100 rounded-xl shadow-2xl p-4 space-y-4">
+        <div className="bg-background text-text-primary text-right text-4xl font-mono p-4 rounded-lg overflow-x-auto">
           {display}
         </div>
         <div className="grid grid-cols-4 gap-3">
@@ -98,23 +101,23 @@ const Calculator: React.FC = () => {
           <CalculatorButton onClick={() => handleOperator('/')} className="bg-indigo-500 text-white">÷</CalculatorButton>
           <CalculatorButton onClick={() => handleOperator('*')} className="bg-indigo-500 text-white">×</CalculatorButton>
           
-          <CalculatorButton onClick={() => handleDigit('7')} className="bg-surface-200 dark:bg-surface-200-dark">7</CalculatorButton>
-          <CalculatorButton onClick={() => handleDigit('8')} className="bg-surface-200 dark:bg-surface-200-dark">8</CalculatorButton>
-          <CalculatorButton onClick={() => handleDigit('9')} className="bg-surface-200 dark:bg-surface-200-dark">9</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('7')} className="bg-surface-200">7</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('8')} className="bg-surface-200">8</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('9')} className="bg-surface-200">9</CalculatorButton>
           <CalculatorButton onClick={() => handleOperator('-')} className="bg-indigo-500 text-white">−</CalculatorButton>
           
-          <CalculatorButton onClick={() => handleDigit('4')} className="bg-surface-200 dark:bg-surface-200-dark">4</CalculatorButton>
-          <CalculatorButton onClick={() => handleDigit('5')} className="bg-surface-200 dark:bg-surface-200-dark">5</CalculatorButton>
-          <CalculatorButton onClick={() => handleDigit('6')} className="bg-surface-200 dark:bg-surface-200-dark">6</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('4')} className="bg-surface-200">4</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('5')} className="bg-surface-200">5</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('6')} className="bg-surface-200">6</CalculatorButton>
           <CalculatorButton onClick={() => handleOperator('+')} className="bg-indigo-500 text-white">+</CalculatorButton>
           
-          <CalculatorButton onClick={() => handleDigit('1')} className="bg-surface-200 dark:bg-surface-200-dark">1</CalculatorButton>
-          <CalculatorButton onClick={() => handleDigit('2')} className="bg-surface-200 dark:bg-surface-200-dark">2</CalculatorButton>
-          <CalculatorButton onClick={() => handleDigit('3')} className="bg-surface-200 dark:bg-surface-200-dark">3</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('1')} className="bg-surface-200">1</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('2')} className="bg-surface-200">2</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('3')} className="bg-surface-200">3</CalculatorButton>
           <CalculatorButton onClick={handleEquals} className="row-span-2 bg-primary text-white">=</CalculatorButton>
 
-          <CalculatorButton onClick={() => handleDigit('0')} className="col-span-2 bg-surface-200 dark:bg-surface-200-dark">0</CalculatorButton>
-          <CalculatorButton onClick={handleDecimal} className="bg-surface-200 dark:bg-surface-200-dark">.</CalculatorButton>
+          <CalculatorButton onClick={() => handleDigit('0')} className="col-span-2 bg-surface-200">0</CalculatorButton>
+          <CalculatorButton onClick={handleDecimal} className="bg-surface-200">.</CalculatorButton>
         </div>
       </div>
     </>
