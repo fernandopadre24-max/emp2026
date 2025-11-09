@@ -1,5 +1,5 @@
-import React from 'react';
-import { Client, Loan, Transaction } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Client, Loan, Transaction, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import { formatCPF, formatPhone } from '../utils/formatters';
 import { ArrowUturnLeftIcon, UserIcon, PhoneIcon, MapPinIcon, HashtagIcon, ArrowDownCircleIcon, ArrowUpCircleIcon } from './icons/Icons';
@@ -15,6 +15,21 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ client, loans, transactions
     const totalLoaned = loans.reduce((sum, loan) => sum + loan.principal, 0);
     const payments = transactions.filter(tx => tx.type === 'payment');
     const totalPaid = payments.reduce((sum, tx) => sum + tx.amount, 0);
+
+    const [paymentFilter, setPaymentFilter] = useState<Payment['method'] | 'all'>('all');
+
+    const availableMethods = useMemo(() => {
+        const methods = new Set(payments.map(p => p.method).filter((m): m is Payment['method'] => !!m));
+        return Array.from(methods);
+    }, [payments]);
+
+    const filteredPayments = useMemo(() => {
+        if (paymentFilter === 'all') {
+            return payments;
+        }
+        return payments.filter(p => p.method === paymentFilter);
+    }, [payments, paymentFilter]);
+
 
     const getLoanStatus = (loan: Loan) => {
         if (loan.installments.every(i => i.status === 'Paga')) {
@@ -125,22 +140,54 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ client, loans, transactions
 
                     {/* Payments History */}
                     <div className="bg-surface-100 rounded-xl shadow-lg p-6">
-                        <h3 className="text-xl font-semibold mb-4 text-text-primary">Histórico de Pagamentos</h3>
+                        <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                            <h3 className="text-xl font-semibold text-text-primary">Histórico de Pagamentos</h3>
+                            {availableMethods.length > 1 && (
+                                <div className="flex space-x-1 p-1 bg-surface-200 rounded-lg">
+                                    <button
+                                        onClick={() => setPaymentFilter('all')}
+                                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                                            paymentFilter === 'all' ? 'bg-primary text-white shadow' : 'text-text-secondary hover:bg-surface-300'
+                                        }`}
+                                    >
+                                        Todos
+                                    </button>
+                                    {availableMethods.map(method => (
+                                        <button
+                                            key={method}
+                                            onClick={() => setPaymentFilter(method)}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                                                paymentFilter === method ? 'bg-primary text-white shadow' : 'text-text-secondary hover:bg-surface-300'
+                                            }`}
+                                        >
+                                            {method}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         {payments.length > 0 ? (
                             <div className="max-h-96 overflow-y-auto">
-                                <ul className="divide-y divide-surface-300">
-                                    {payments.map(tx => (
-                                        <li key={tx.id} className="py-3">
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-medium text-text-primary">{tx.description}</p>
-                                                    <p className="text-sm text-text-secondary">{formatDate(tx.date)}</p>
+                                {filteredPayments.length > 0 ? (
+                                    <ul className="divide-y divide-surface-300">
+                                        {filteredPayments.map(tx => (
+                                            <li key={tx.id} className="py-3">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <p className="font-medium text-text-primary">{tx.description}</p>
+                                                        <div className="flex items-center space-x-2 mt-1">
+                                                            <span className="text-sm text-text-secondary">{formatDate(tx.date)}</span>
+                                                            {tx.method && <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">{tx.method}</span>}
+                                                        </div>
+                                                    </div>
+                                                    <p className="font-semibold text-success">{formatCurrency(tx.amount)}</p>
                                                 </div>
-                                                <p className="font-semibold text-success">{formatCurrency(tx.amount)}</p>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-text-secondary py-4">Nenhum pagamento encontrado para o filtro selecionado.</p>
+                                )}
                             </div>
                         ) : (
                             <p className="text-center text-text-secondary py-4">Nenhum pagamento registrado para este cliente.</p>
