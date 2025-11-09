@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Client, Loan, Account } from '../types';
+import { Client, Loan, Account, Installment } from '../types';
 import { calculateAmortization, formatDate, formatCurrency } from '../utils/loanCalculator';
 import Calendar from './Calendar';
 
@@ -21,6 +21,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [error, setError] = useState('');
+  const [simulationResults, setSimulationResults] = useState<Installment[] | null>(null);
   
   const isEditMode = !!loanToEdit;
   const hasPayments = isEditMode && loanToEdit.installments.some(i => i.payments.length > 0);
@@ -40,6 +41,11 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
         setAccountId(accounts[0]?.id || '');
     }
   }, [loanToEdit, clients, accounts]);
+  
+  // Clear simulation results if core values change
+  useEffect(() => {
+      setSimulationResults(null);
+  }, [principal, interestRate, installmentsCount, startDate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -52,6 +58,29 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+  
+  const handleSimulate = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setError('');
+
+    const p = parseFloat(principal);
+    const ir = parseFloat(interestRate);
+    const ic = parseInt(installmentsCount, 10);
+
+    if(isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
+        setError("Para simular, preencha os campos de valor, juros e parcelas com valores positivos.");
+        setSimulationResults(null);
+        return;
+    }
+
+    const installments = calculateAmortization(p, ir / 100, ic, startDate);
+    if (installments.length === 0) {
+        setError("Não foi possível calcular a simulação. Verifique os valores inseridos.");
+        setSimulationResults(null);
+    } else {
+        setSimulationResults(installments);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +155,9 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
   };
   
   const inputStyles = "w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface-100 text-text-primary disabled:bg-surface-200 disabled:cursor-not-allowed";
+  
+  const totalPaid = simulationResults ? simulationResults.reduce((acc, inst) => acc + inst.amount, 0) : 0;
+  const totalInterest = totalPaid - parseFloat(principal || '0');
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -186,6 +218,58 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           )}
         </div>
       </div>
+      
+       <div className="pt-2">
+          <button 
+            type="button" 
+            onClick={handleSimulate}
+            className="w-full px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary-hover disabled:bg-gray-400 font-semibold"
+            disabled={hasPayments}
+          >
+            Simular Empréstimo
+          </button>
+      </div>
+
+      {simulationResults && (
+        <div className="mt-4 p-4 bg-surface-200 rounded-lg animate-fade-in-up">
+          <h3 className="text-lg font-semibold text-text-primary mb-3">Resultado da Simulação</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center mb-4">
+            <div className="bg-surface-100 p-2 rounded-md">
+                <p className="text-xs text-text-secondary">Valor da Parcela</p>
+                <p className="font-bold text-primary">{formatCurrency(simulationResults[0]?.amount || 0)}</p>
+            </div>
+            <div className="bg-surface-100 p-2 rounded-md">
+                <p className="text-xs text-text-secondary">Total a Pagar</p>
+                <p className="font-bold text-text-primary">{formatCurrency(totalPaid)}</p>
+            </div>
+            <div className="bg-surface-100 p-2 rounded-md">
+                <p className="text-xs text-text-secondary">Total de Juros</p>
+                <p className="font-bold text-danger">{formatCurrency(totalInterest)}</p>
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto border border-surface-300 rounded-md">
+             <table className="min-w-full text-sm">
+                <thead className="bg-surface-300/50">
+                    <tr>
+                        <th className="p-2 text-left font-medium">#</th>
+                        <th className="p-2 text-left font-medium">Vencimento</th>
+                        <th className="p-2 text-right font-medium">Valor</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-surface-100">
+                    {simulationResults.map(inst => (
+                        <tr key={inst.number} className="border-t border-surface-300">
+                            <td className="p-2 font-mono">{inst.number}</td>
+                            <td className="p-2">{formatDate(inst.dueDate)}</td>
+                            <td className="p-2 text-right">{formatCurrency(inst.amount)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+             </table>
+          </div>
+        </div>
+      )}
+
       {hasPayments && <p className="text-sm text-amber-600">Campos principais não podem ser editados pois este empréstimo já possui pagamentos registrados.</p>}
       {error && <p className="text-sm text-danger mt-2">{error}</p>}
       <div className="flex justify-end space-x-2 pt-4">
