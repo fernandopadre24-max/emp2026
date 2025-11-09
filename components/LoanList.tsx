@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Client, Loan, Account, Installment, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import AmortizationTable from './AmortizationTable';
-import { ChevronDownIcon, ExclamationTriangleIcon, PencilIcon, TrashIcon, BuildingLibraryIcon } from './icons/Icons';
+import { ChevronDownIcon, PencilIcon, TrashIcon, BuildingLibraryIcon } from './icons/Icons';
 
 interface LoanListProps {
   loans: Loan[];
@@ -31,6 +31,16 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
 
   const toggleExpand = (loanId: string) => {
     setExpandedLoanId(expandedLoanId === loanId ? null : loanId);
+  };
+
+  const getLoanStatus = (loan: Loan) => {
+    if (loan.installments.every(i => i.status === 'Paga')) {
+        return { text: 'Quitado', className: 'bg-green-100 text-green-800' };
+    }
+    if (loan.installments.some(i => i.status === 'Atrasada')) {
+        return { text: 'Com Atraso', className: 'bg-red-100 text-red-800 font-semibold' };
+    }
+    return { text: 'Ativo', className: 'bg-blue-100 text-blue-800' };
   };
 
   const filteredLoans = useMemo(() => {
@@ -93,7 +103,7 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
             const totalInstallments = loan.installments.length;
             const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
             const isExpanded = expandedLoanId === loan.id;
-            const hasOverdue = loan.installments.some(i => i.status === 'Atrasada');
+            const loanStatus = getLoanStatus(loan);
             
             const allPayments = loan.installments.flatMap(inst => inst.payments);
             const lastPayment = allPayments.length > 0
@@ -143,8 +153,13 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 w-full sm:w-auto">
-                      <p className="text-sm text-text-secondary">Início em {formatDate(loan.startDate)}</p>
-                      <div className="flex items-center justify-end space-x-2 mt-2">
+                        <div className="flex items-center justify-end gap-x-3 mb-2">
+                            <p className="text-sm text-text-secondary">Início em {formatDate(loan.startDate)}</p>
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${loanStatus.className}`}>
+                                {loanStatus.text}
+                            </span>
+                        </div>
+                      <div className="flex items-center justify-end space-x-2">
                         <span className="text-sm font-medium text-text-secondary">{paidInstallments}/{totalInstallments} Pagas</span>
                         <div className="w-24 bg-surface-300 rounded-full h-2.5">
                           <div className="bg-success h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
@@ -153,12 +168,6 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                       {lastPayment && (
                         <div className="mt-2 text-xs text-text-secondary">
                           Último Pgto: <span className="font-semibold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">{lastPayment.method}</span> em {formatDate(lastPayment.date)}
-                        </div>
-                      )}
-                      {hasOverdue && (
-                        <div className="mt-2 flex items-center justify-end text-danger font-semibold">
-                          <ExclamationTriangleIcon className="w-5 h-5 mr-1" />
-                          <span>Parcelas Atrasadas</span>
                         </div>
                       )}
                     </div>
