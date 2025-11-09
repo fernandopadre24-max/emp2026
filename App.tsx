@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
 import Dashboard from './components/Dashboard';
 import ClientList from './components/ClientList';
+import ClientDetail from './components/ClientDetail';
 import LoanList from './components/LoanList';
 import AccountsList from './components/AccountsList';
 import Calculator from './components/Calculator';
@@ -38,6 +39,8 @@ const App: React.FC = () => {
   const [accountForNewTransaction, setAccountForNewTransaction] = useState<string | null>(null);
 
   const [confirmation, setConfirmation] = useState({ isOpen: false, message: '', onConfirm: () => {} });
+  
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -92,8 +95,17 @@ const App: React.FC = () => {
     setConfirmation({
       isOpen: true,
       message: 'Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.',
-      onConfirm: () => deleteClient(clientId),
+      onConfirm: () => {
+        deleteClient(clientId);
+        setSelectedClientId(null); // Go back to list if deleting from detail view
+      },
     });
+  };
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+  };
+  const handleBackToClientList = () => {
+    setSelectedClientId(null);
   };
   
   // Loan CRUD
@@ -320,8 +332,29 @@ const App: React.FC = () => {
         return <Dashboard loans={loans} clients={clients} transactions={transactions} accounts={accounts} />;
       case 'loans':
         return <LoanList loans={loans} clients={clients} accounts={accounts} onRecordPayment={recordPayment} onEdit={handleEditLoan} onDelete={handleDeleteLoan} />;
-      case 'clients':
-        return <ClientList clients={clients} onEdit={handleEditClient} onDelete={handleDeleteClient} onNewClient={() => setIsClientModalOpen(true)} />;
+      case 'clients': {
+        const selectedClient = clients.find(c => c.id === selectedClientId);
+
+        if (selectedClient) {
+            return (
+                <ClientDetail
+                    client={selectedClient}
+                    loans={loans.filter(l => l.clientId === selectedClientId)}
+                    transactions={transactions.filter(t => t.clientId === selectedClientId)}
+                    onBack={handleBackToClientList}
+                />
+            );
+        }
+        return (
+            <ClientList
+                clients={clients}
+                onEdit={handleEditClient}
+                onDelete={handleDeleteClient}
+                onNewClient={() => setIsClientModalOpen(true)}
+                onSelectClient={handleSelectClient}
+            />
+        );
+    }
       case 'accounts':
         return <AccountsList 
           accounts={accounts} 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Client } from '../types';
-import { formatCPF, formatPhone } from '../utils/formatters';
+import { formatCPF, formatPhone, validateCPF } from '../utils/formatters';
 
 interface ClientFormProps {
   addClient: (client: Omit<Client, 'id'>) => void;
@@ -14,6 +14,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [cpfError, setCpfError] = useState('');
 
   useEffect(() => {
     if (clientToEdit) {
@@ -25,6 +26,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
   }, [clientToEdit]);
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (cpfError) {
+      setCpfError('');
+    }
     const rawValue = e.target.value.replace(/\D/g, '');
     if (rawValue.length <= 11) {
       setCpf(rawValue);
@@ -44,6 +48,12 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
         alert("Por favor, preencha todos os campos.");
         return;
     }
+
+    if (!validateCPF(cpf)) {
+        setCpfError('CPF inválido. Por favor, verifique o número digitado.');
+        return;
+    }
+    
     const clientData = { name, cpf, phone, address };
     
     if (clientToEdit) {
@@ -56,6 +66,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
   };
   
   const inputStyles = "w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface-100 text-text-primary";
+  const errorInputStyles = "w-full px-3 py-2 border border-danger rounded-md focus:outline-none focus:ring-2 focus:ring-danger bg-surface-100 text-text-primary";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -65,7 +76,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ addClient, updateClient, client
       </div>
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">CPF</label>
-        <input type="text" value={formatCPF(cpf)} onChange={handleCpfChange} className={inputStyles} placeholder="000.000.000-00" required />
+        <input 
+            type="text" 
+            value={formatCPF(cpf)} 
+            onChange={handleCpfChange} 
+            className={cpfError ? errorInputStyles : inputStyles} 
+            placeholder="000.000.000-00" 
+            required
+            aria-invalid={!!cpfError}
+            aria-describedby="cpf-error"
+        />
+        {cpfError && <p id="cpf-error" className="text-sm text-danger mt-1">{cpfError}</p>}
       </div>
       <div>
         <label className="block text-sm font-medium text-text-secondary mb-1">Telefone</label>

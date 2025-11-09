@@ -99,6 +99,13 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
             const lastPayment = allPayments.length > 0
               ? allPayments.reduce((latest, current) => new Date(current.date) > new Date(latest.date) ? current : latest)
               : null;
+              
+            const totalInterestToPay = loan.installments.reduce((sum, inst) => sum + inst.interest, 0);
+            const totalInterestPaid = loan.installments.reduce((sum, inst) => {
+                const totalPaidForInstallment = inst.payments.reduce((pSum, p) => pSum + p.amount, 0);
+                const interestPaidForInstallment = Math.min(totalPaidForInstallment, inst.interest);
+                return sum + interestPaidForInstallment;
+            }, 0);
 
             return (
               <div key={loan.id} className="bg-surface-100 rounded-xl shadow-lg overflow-hidden transition-shadow hover:shadow-xl">
@@ -125,6 +132,14 @@ const LoanList: React.FC<LoanListProps> = ({ loans, clients, accounts, onRecordP
                       <p className="text-sm text-text-secondary">
                         {loan.installmentsCount} parcelas de ~{formatCurrency(loan.installments[0]?.amount)}
                       </p>
+                      <div className="mt-2 text-xs text-text-secondary flex flex-wrap gap-x-4 gap-y-1">
+                        <span>
+                            Juros Totais: <span className="font-semibold text-text-primary">{formatCurrency(totalInterestToPay)}</span>
+                        </span>
+                        <span>
+                            Juros Pagos: <span className="font-semibold text-success">{formatCurrency(totalInterestPaid)}</span>
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right flex-shrink-0 w-full sm:w-auto">
                       <p className="text-sm text-text-secondary">Início em {formatDate(loan.startDate)}</p>
