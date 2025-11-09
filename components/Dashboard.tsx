@@ -39,6 +39,8 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
     const [revenueFilter, setRevenueFilter] = useState<RevenueFilter>('6m');
     const [statusVisibility, setStatusVisibility] = useState<LoanStatusVisibility>({ onTime: true, overdue: true, paidOff: true });
     const [loanStatusChartType, setLoanStatusChartType] = useState<LoanStatusChartType>('pie');
+    const [cashflowAccountId, setCashflowAccountId] = useState<string>('all');
+
 
     const totalPrincipal = loans.reduce((sum, loan) => sum + loan.principal, 0);
     const totalReceivable = loans.reduce((sum, loan) => {
@@ -174,6 +176,49 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         const maxRevenue = Math.max(...months.map(m => m.total), 0);
         return { months, maxRevenue };
     }, [transactions, revenueFilter]);
+
+    const projectedCashflowData = useMemo(() => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+    
+        const months = Array.from({ length: 12 }, (_, i) => {
+            const d = new Date(currentYear, currentMonth + i, 1);
+            return {
+                label: d.toLocaleString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+                year: d.getFullYear(),
+                month: d.getMonth(),
+                total: 0,
+            };
+        });
+    
+        const relevantLoans = cashflowAccountId === 'all'
+            ? loans
+            : loans.filter(loan => loan.accountId === cashflowAccountId);
+    
+        relevantLoans.forEach(loan => {
+            loan.installments.forEach(inst => {
+                if (inst.status !== 'Paga') {
+                    const dueDate = new Date(inst.dueDate + 'T00:00:00'); // Trata a data como local
+                    const dueYear = dueDate.getFullYear();
+                    const dueMonth = dueDate.getMonth();
+                    
+                    const monthData = months.find(m => m.year === dueYear && m.month === dueMonth);
+    
+                    if (monthData) {
+                        const totalPaid = inst.payments.reduce((sum, p) => sum + p.amount, 0);
+                        const remainingAmount = inst.amount - totalPaid;
+                        if (remainingAmount > 0) {
+                            monthData.total += remainingAmount;
+                        }
+                    }
+                }
+            });
+        });
+    
+        const maxProjected = Math.max(...months.map(m => m.total), 0);
+        return { months, maxProjected };
+    }, [loans, cashflowAccountId]);
     
     const LoanStatusChartFilter = () => {
         const filters: {key: LoanStatusChartType, label: string}[] = [
@@ -432,6 +477,122 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         );
     };
 
+    const ProjectedCashflowChart = () => {
+        const { months, maxProjected } = projectedCashflowData;
+        
+        const getChartYAxis = (maxVal: number) => {
+            if (maxVal <= 0) return { ticks: [0, 250, 500, 750, 1000], top: 1000 };
+
+            const numTicks = 4;
+            const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+            const residual = maxVal / magnitude;
+            let tickSize;
+
+            if (residual > 5) tickSize = 2 * magnitude;
+            else if (residual > 2) tickSize = magnitude;
+            else if (residual > 1) tickSize = 0.5 * magnitude;
+            else tickSize = 0.2 * magnitude;
+            
+            const top = Math.ceil(maxVal / tickSize) * tickSize;
+            
+            const ticks = [];
+            const step = top / numTicks;
+            for (let i = 0; i <= numTicks; i++) {
+                ticks.push(i * step);
+            }
+
+            return { ticks, top };
+        };
+
+        const { ticks: yTicks, top: yAxisTop } = useMemo(() => getChartYAxis(maxProjected), [maxProjected]);
+        
+        const CHART_HEIGHT = 224; // h-56
+        const PADDING = { top: 10, right: 10, bottom: 25, left: 45 };
+
+        const barWidth = 35;
+        const barSpacing = 20;
+        const chartWidth = PADDING.left + PADDING.right + months.length * (barWidth + barSpacing);
+        const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
+
+        if (loans.length === 0) {
+            return (
+                <div className="bg-surface-100 rounded-xl shadow-lg p-6">
+                     <h3 className="text-xl font-semibold text-text-primary mb-4">Fluxo de Caixa Projetado (12 Meses)</h3>
+                     <div className="flex items-center justify-center h-56">
+                        <p className="text-text-secondary">Nenhum empréstimo ativo para projetar o fluxo de caixa.</p>
+                    </div>
+                </div>
+            )
+        }
+
+        return (
+            <div className="bg-surface-100 rounded-xl shadow-lg p-6">
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h3 className="text-xl font-semibold text-text-primary">Fluxo de Caixa Projetado (12 Meses)</h3>
+                    <select
+                        value={cashflowAccountId}
+                        onChange={(e) => setCashflowAccountId(e.target.value)}
+                        className="px-3 py-1.5 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-surface-200 text-sm text-text-secondary font-medium"
+                    >
+                        <option value="all">Todas as Contas</option>
+                        {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="h-56 w-full overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+                    <svg width={chartWidth} height={CHART_HEIGHT} aria-label="Gráfico de Fluxo de Caixa Projetado">
+                        <g role="presentation">
+                            {yTicks.map((tick, i) => {
+                                const y = PADDING.top + plotHeight - (yAxisTop > 0 ? (tick / yAxisTop) * plotHeight : 0);
+                                if (y < PADDING.top) return null;
+                                return (
+                                    <g key={tick} className="text-text-secondary">
+                                        <line 
+                                            x1={PADDING.left} 
+                                            x2={chartWidth - PADDING.right} 
+                                            y1={y} y2={y} 
+                                            stroke="var(--color-surface-300)"
+                                            strokeDasharray={i === 0 ? "none" : "2,3"}
+                                        />
+                                        <text x={PADDING.left - 8} y={y + 4} textAnchor="end" className="text-xs fill-current">
+                                            {formatCurrencyForAxis(tick)}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                        </g>
+                        <g role="list" aria-label="Barras de projeção de caixa">
+                            {months.map((month, index) => {
+                                const x = PADDING.left + index * (barWidth + barSpacing) + barSpacing / 2;
+                                const barHeight = yAxisTop > 0 ? (month.total / yAxisTop) * plotHeight : 0;
+                                const y = CHART_HEIGHT - PADDING.bottom - barHeight;
+
+                                return (
+                                    <g key={month.label + month.year + month.month} role="listitem" aria-label={`${month.label}: ${formatCurrency(month.total)}`}>
+                                        <rect 
+                                            x={x}
+                                            y={y}
+                                            width={barWidth}
+                                            height={barHeight > 0 ? barHeight : 0}
+                                            rx="3"
+                                            className="fill-secondary/60 hover:fill-secondary transition-colors cursor-pointer"
+                                        >
+                                            <title>{`${month.label}: ${formatCurrency(month.total)}`}</title>
+                                        </rect>
+                                        <text x={x + barWidth / 2} y={CHART_HEIGHT - PADDING.bottom + 15} textAnchor="middle" className="text-xs fill-text-secondary">
+                                            {month.label}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        );
+    };
+
   return (
     <>
       <h1 className="text-3xl font-bold mb-6 text-text-primary">Painel de Controle</h1>
@@ -488,6 +649,10 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
           <h3 className="text-xl font-semibold mb-4 text-text-primary">Balanço das Contas</h3>
           <AccountBalanceChart />
         </div>
+      </div>
+
+      <div className="mt-8">
+        <ProjectedCashflowChart />
       </div>
     </>
   );
