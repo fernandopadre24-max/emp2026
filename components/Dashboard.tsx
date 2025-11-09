@@ -11,7 +11,7 @@ interface DashboardProps {
   accounts: Account[];
 }
 
-type RevenueFilter = '6m' | '12m' | 'ytd';
+type RevenueFilter = '6m' | '12m' | 'ytd' | '24m' | 'all';
 type LoanStatusVisibility = {
     onTime: boolean;
     overdue: boolean;
@@ -93,20 +93,42 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         const currentUTCFullYear = now.getUTCFullYear();
         const currentUTCMonth = now.getUTCMonth();
 
-        if (revenueFilter === '12m') {
-            months = Array.from({ length: 12 }, (_, i) => {
-                const d = new Date(Date.UTC(currentUTCFullYear, currentUTCMonth - i, 1));
-                return { label: d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }), year: d.getUTCFullYear(), month: d.getUTCMonth(), total: 0 };
-            }).reverse();
-        } else if (revenueFilter === 'ytd') {
+        if (revenueFilter === 'ytd') {
             months = Array.from({ length: currentUTCMonth + 1 }, (_, i) => {
                 const d = new Date(Date.UTC(currentUTCFullYear, i, 1));
                 return { label: d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }), year: d.getUTCFullYear(), month: d.getUTCMonth(), total: 0 };
             });
-        } else { // 6m default
-            months = Array.from({ length: 6 }, (_, i) => {
+        } else if (revenueFilter === 'all') {
+            if (transactions.length > 0) {
+                const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                const firstDate = new Date(sortedTransactions[0].date);
+                
+                let currentDatePointer = new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), 1));
+                const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+                while (currentDatePointer <= endDate) {
+                    months.push({
+                        label: currentDatePointer.toLocaleString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+                        year: currentDatePointer.getUTCFullYear(),
+                        month: currentDatePointer.getUTCMonth(),
+                        total: 0
+                    });
+                    currentDatePointer.setUTCMonth(currentDatePointer.getUTCMonth() + 1);
+                }
+            }
+        } else { // Handles '6m', '12m', '24m'
+            const numMonths = revenueFilter === '6m' ? 6 : (revenueFilter === '12m' ? 12 : 24);
+            const firstMonthInPeriod = new Date(Date.UTC(currentUTCFullYear, currentUTCMonth - (numMonths - 1), 1));
+            const showYear = firstMonthInPeriod.getUTCFullYear() !== currentUTCFullYear || numMonths > 12;
+
+            months = Array.from({ length: numMonths }, (_, i) => {
                 const d = new Date(Date.UTC(currentUTCFullYear, currentUTCMonth - i, 1));
-                return { label: d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }), year: d.getUTCFullYear(), month: d.getUTCMonth(), total: 0 };
+                return { 
+                    label: d.toLocaleString('pt-BR', { month: 'short', year: showYear ? '2-digit' : undefined, timeZone: 'UTC' }),
+                    year: d.getUTCFullYear(), 
+                    month: d.getUTCMonth(), 
+                    total: 0 
+                };
             }).reverse();
         }
         
@@ -228,9 +250,11 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
 
     const RevenueChartFilter = () => {
         const filters: {key: RevenueFilter, label: string}[] = [
-            { key: '6m', label: 'Últimos 6M' },
-            { key: '12m', label: 'Últimos 12M' },
+            { key: '6m', label: '6 Meses' },
+            { key: '12m', label: '12 Meses' },
+            { key: '24m', label: '24 Meses' },
             { key: 'ytd', label: 'Este Ano' },
+            { key: 'all', label: 'Tudo' },
         ];
         return (
             <div className="flex space-x-1 p-0.5 bg-surface-200 rounded-lg">
@@ -315,7 +339,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
                             const y = chartHeight - PADDING.bottom - barHeight;
 
                             return (
-                                <g key={month.label} role="listitem" aria-label={`${month.label}: ${formatCurrency(month.total)}`}>
+                                <g key={month.label + month.year + month.month} role="listitem" aria-label={`${month.label}: ${formatCurrency(month.total)}`}>
                                     <rect 
                                         x={x}
                                         y={y}
