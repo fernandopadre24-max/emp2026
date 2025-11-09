@@ -12,16 +12,22 @@ interface LoanFormProps {
   closeModal: () => void;
 }
 
+interface SimulationResult {
+    installments: Installment[];
+    iofAmount: number;
+}
+
 const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateLoan, loanToEdit, closeModal }) => {
   const [clientId, setClientId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [principal, setPrincipal] = useState('');
   const [interestRate, setInterestRate] = useState('');
+  const [iofRate, setIofRate] = useState('');
   const [installmentsCount, setInstallmentsCount] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [error, setError] = useState('');
-  const [simulationResults, setSimulationResults] = useState<Installment[] | null>(null);
+  const [simulationResults, setSimulationResults] = useState<SimulationResult | null>(null);
   
   const isEditMode = !!loanToEdit;
   const hasPayments = isEditMode && loanToEdit.installments.some(i => i.payments.length > 0);
@@ -34,6 +40,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       setAccountId(loanToEdit.accountId);
       setPrincipal(String(loanToEdit.principal));
       setInterestRate(String(loanToEdit.interestRate));
+      setIofRate(String(loanToEdit.iofRate || ''));
       setInstallmentsCount(String(loanToEdit.installmentsCount));
       setStartDate(loanToEdit.startDate);
     } else {
@@ -45,7 +52,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
   // Clear simulation results if core values change
   useEffect(() => {
       setSimulationResults(null);
-  }, [principal, interestRate, installmentsCount, startDate]);
+  }, [principal, interestRate, installmentsCount, startDate, iofRate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,6 +73,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
     const p = parseFloat(principal);
     const ir = parseFloat(interestRate);
     const ic = parseInt(installmentsCount, 10);
+    const iof = parseFloat(iofRate) || 0;
 
     if(isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
         setError("Para simular, preencha os campos de valor, juros e parcelas com valores positivos.");
@@ -73,12 +81,15 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
         return;
     }
 
-    const installments = calculateAmortization(p, ir / 100, ic, startDate);
+    const iofAmount = iof > 0 ? p * (iof / 100) : 0;
+    const financedAmount = p + iofAmount;
+    const installments = calculateAmortization(financedAmount, ir / 100, ic, startDate);
+
     if (installments.length === 0) {
         setError("Não foi possível calcular a simulação. Verifique os valores inseridos.");
         setSimulationResults(null);
     } else {
-        setSimulationResults(installments);
+        setSimulationResults({ installments, iofAmount });
     }
   };
 
@@ -89,6 +100,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
     const p = parseFloat(principal);
     const ir = parseFloat(interestRate);
     const ic = parseInt(installmentsCount, 10);
+    const iof = parseFloat(iofRate) || 0;
 
     if(!clientId || !accountId || isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
         setError("Por favor, preencha todos os campos com valores numéricos positivos e válidos.");
@@ -106,20 +118,21 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           return;
       }
     }
-
+    
+    const iofAmount = iof > 0 ? p * (iof / 100) : 0;
+    const financedAmount = p + iofAmount;
 
     if (isEditMode) {
-        // Para edição, apenas alguns campos podem ser alterados
-        // Recalcular parcelas só se os dados principais mudarem E não houver pagamentos
         const needsRecalculation = !hasPayments && (
             p !== loanToEdit.principal || 
             ir !== loanToEdit.interestRate || 
+            iof !== (loanToEdit.iofRate || 0) ||
             ic !== loanToEdit.installmentsCount ||
             startDate !== loanToEdit.startDate
         );
         
         const installments = needsRecalculation 
-            ? calculateAmortization(p, ir / 100, ic, startDate)
+            ? calculateAmortization(financedAmount, ir / 100, ic, startDate)
             : loanToEdit.installments;
 
         const updatedLoan: Loan = {
@@ -127,13 +140,15 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           clientId,
           principal: p,
           interestRate: ir,
+          iofRate: iof,
+          iofAmount: iofAmount,
           installmentsCount: ic,
           startDate,
           installments,
         };
         updateLoan(updatedLoan);
     } else {
-        const installments = calculateAmortization(p, ir / 100, ic, startDate);
+        const installments = calculateAmortization(financedAmount, ir / 100, ic, startDate);
         if (installments.length === 0) {
             setError("Não foi possível calcular as parcelas. Verifique se os valores inseridos são realistas.");
             return;
@@ -144,6 +159,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           accountId,
           principal: p,
           interestRate: ir,
+          iofRate: iof,
+          iofAmount: iofAmount,
           installmentsCount: ic,
           startDate,
           installments,
@@ -156,8 +173,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
   
   const inputStyles = "w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface-100 text-text-primary disabled:bg-surface-200 disabled:cursor-not-allowed";
   
-  const totalPaid = simulationResults ? simulationResults.reduce((acc, inst) => acc + inst.amount, 0) : 0;
-  const totalInterest = totalPaid - parseFloat(principal || '0');
+  const totalPaid = simulationResults ? simulationResults.installments.reduce((acc, inst) => acc + inst.amount, 0) : 0;
+  const totalInterest = simulationResults ? totalPaid - (parseFloat(principal || '0') + simulationResults.iofAmount) : 0;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -186,16 +203,21 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           <input type="number" step="0.01" value={principal} onChange={(e) => setPrincipal(e.target.value)} className={inputStyles} required disabled={hasPayments} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros Mensal (%)</label>
-          <input type="number" step="0.01" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} className={inputStyles} required disabled={hasPayments} />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Nº de Parcelas</label>
           <input type="number" value={installmentsCount} onChange={(e) => setInstallmentsCount(e.target.value)} className={inputStyles} required disabled={hasPayments} />
         </div>
-        <div className="relative" ref={calendarRef}>
+      </div>
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros Mensal (%)</label>
+          <input type="number" step="0.01" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} className={inputStyles} required disabled={hasPayments} />
+        </div>
+         <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de IOF (%) <span className="text-xs">(Opcional)</span></label>
+          <input type="number" step="0.01" value={iofRate} onChange={(e) => setIofRate(e.target.value)} className={inputStyles} disabled={hasPayments} placeholder="Ex: 0.38"/>
+        </div>
+      </div>
+      <div className="relative" ref={calendarRef}>
           <label className="block text-sm font-medium text-text-secondary mb-1">Data de Início</label>
           <input 
             type="text" 
@@ -217,7 +239,6 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
             </div>
           )}
         </div>
-      </div>
       
        <div className="pt-2">
           <button 
@@ -233,18 +254,24 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       {simulationResults && (
         <div className="mt-4 p-4 bg-surface-200 rounded-lg animate-fade-in-up">
           <h3 className="text-lg font-semibold text-text-primary mb-3">Resultado da Simulação</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
             <div className="bg-surface-100 p-2 rounded-md">
                 <p className="text-xs text-text-secondary">Valor da Parcela</p>
-                <p className="font-bold text-primary">{formatCurrency(simulationResults[0]?.amount || 0)}</p>
+                <p className="font-bold text-primary">{formatCurrency(simulationResults.installments[0]?.amount || 0)}</p>
+            </div>
+            {simulationResults.iofAmount > 0 && (
+                <div className="bg-surface-100 p-2 rounded-md">
+                    <p className="text-xs text-text-secondary">IOF</p>
+                    <p className="font-bold text-text-primary">{formatCurrency(simulationResults.iofAmount)}</p>
+                </div>
+            )}
+            <div className="bg-surface-100 p-2 rounded-md">
+                <p className="text-xs text-text-secondary">Total Juros</p>
+                <p className="font-bold text-danger">{formatCurrency(totalInterest)}</p>
             </div>
             <div className="bg-surface-100 p-2 rounded-md">
                 <p className="text-xs text-text-secondary">Total a Pagar</p>
                 <p className="font-bold text-text-primary">{formatCurrency(totalPaid)}</p>
-            </div>
-            <div className="bg-surface-100 p-2 rounded-md">
-                <p className="text-xs text-text-secondary">Total de Juros</p>
-                <p className="font-bold text-danger">{formatCurrency(totalInterest)}</p>
             </div>
           </div>
           <div className="max-h-48 overflow-y-auto border border-surface-300 rounded-md">
@@ -257,7 +284,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
                     </tr>
                 </thead>
                 <tbody className="bg-surface-100">
-                    {simulationResults.map(inst => (
+                    {simulationResults.installments.map(inst => (
                         <tr key={inst.number} className="border-t border-surface-300">
                             <td className="p-2 font-mono">{inst.number}</td>
                             <td className="p-2">{formatDate(inst.dueDate)}</td>

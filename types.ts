@@ -1,4 +1,4 @@
-
+// types.ts
 
 export interface Client {
   id: string;
@@ -9,7 +9,7 @@ export interface Client {
 }
 
 export interface Payment {
-  id:string;
+  id: string;
   amount: number;
   date: string; // ISO string
   accountId: string;
@@ -19,7 +19,7 @@ export interface Payment {
 
 export interface Installment {
   number: number;
-  dueDate: string;
+  dueDate: string; // YYYY-MM-DD
   amount: number;
   principal: number;
   interest: number;
@@ -34,10 +34,12 @@ export interface Loan {
   clientId: string;
   accountId: string;
   principal: number;
-  interestRate: number; // monthly interest rate in percentage
+  interestRate: number;
   installmentsCount: number;
-  startDate: string; // YYY-MM-DD
+  startDate: string; // YYYY-MM-DD
   installments: Installment[];
+  iofRate?: number;
+  iofAmount?: number;
 }
 
 export interface Account {
@@ -49,18 +51,15 @@ export interface Account {
 export interface Transaction {
   id: string;
   accountId: string;
-  amount: number; // positive for income, negative for outcome
+  amount: number;
   date: string; // ISO string
-  type: 'payment' | 'deposit' | 'withdrawal';
+  type: 'payment' | 'withdrawal' | 'deposit';
   description: string;
-  
-  // Optional fields specific to payment type
   loanId?: string;
   clientId?: string;
   installmentNumber?: number;
-  method?: 'Dinheiro' | 'Transferência' | 'PIX';
+  method?: Payment['method'];
   pixKey?: string;
 }
-
 
 export type View = 'dashboard' | 'loans' | 'clients' | 'accounts' | 'calculator' | 'calendar';

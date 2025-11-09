@@ -85,6 +85,32 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
             total: data.onTime + data.overdue + data.paidOff,
         };
     }, [loanStatusData, statusVisibility]);
+    
+    const accountBalanceData = useMemo(() => {
+        const colors = [
+            'var(--color-primary)', 
+            'var(--color-secondary)', 
+            'var(--color-warning)', 
+            '#8b5cf6', // purple-500
+            '#ec4899', // pink-500
+            '#6366f1', // indigo-500
+        ];
+        
+        const positiveBalanceAccounts = accounts.filter(acc => acc.balance > 0);
+        const totalBalance = positiveBalanceAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+        if (totalBalance <= 0) {
+            return { accounts: [], totalBalance: 0 };
+        }
+
+        const chartData = positiveBalanceAccounts.map((account, index) => ({
+            ...account,
+            percent: (account.balance / totalBalance) * 100,
+            color: colors[index % colors.length],
+        })).sort((a,b) => b.balance - a.balance);
+
+        return { accounts: chartData, totalBalance };
+    }, [accounts]);
 
     const monthlyRevenueData = useMemo(() => {
         const now = new Date();
@@ -362,6 +388,50 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         );
     };
 
+    const AccountBalanceChart = () => {
+        if (accountBalanceData.totalBalance <= 0) {
+             return (
+                <div className="flex items-center justify-center h-full min-h-[150px]">
+                    <p className="text-text-secondary text-center">Nenhum saldo positivo nas contas para exibir o gráfico.</p>
+                </div>
+            );
+        }
+
+        let accumulatedPercent = 0;
+
+        return (
+            <div className="flex items-center justify-center space-x-8">
+                <svg width="150" height="150" viewBox="0 0 36 36" aria-label="Gráfico de pizza do balanço das contas">
+                    {accountBalanceData.accounts.map((account) => {
+                        const offset = -accumulatedPercent;
+                        accumulatedPercent += account.percent;
+                        return (
+                             <circle key={account.id} cx="18" cy="18" r="8" fill="transparent" stroke={account.color} strokeWidth="16"
+                                strokeDasharray={`${account.percent} 100`}
+                                strokeDashoffset={offset}
+                                transform="rotate(-90 18 18)"
+                                className="transition-all duration-500" 
+                            >
+                                <title>{`${account.name}: ${formatCurrency(account.balance)} (${account.percent.toFixed(1)}%)`}</title>
+                             </circle>
+                        );
+                    })}
+                </svg>
+                <div className="space-y-2">
+                    {accountBalanceData.accounts.map(account => (
+                        <div key={account.id} className="flex items-center">
+                            <span className="w-3 h-3 rounded-full mr-2 shrink-0" style={{ backgroundColor: account.color }}></span>
+                            <div className="text-sm text-text-secondary">
+                                <span>{account.name}</span>
+                                <span className="font-semibold text-text-primary ml-2">{formatCurrency(account.balance)}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
   return (
     <>
       <h1 className="text-3xl font-bold mb-6 text-text-primary">Painel de Controle</h1>
@@ -415,26 +485,8 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <RecentMovements transactions={transactions} clients={clients} loans={loans} />
         <div className="bg-surface-100 rounded-xl shadow-lg p-6">
-          <h3 className="text-xl font-semibold mb-4 text-text-primary">Resumo das Contas</h3>
-          {accounts.length > 0 ? (
-            <ul className="divide-y divide-surface-300">
-              {accounts.map(account => (
-                <li key={account.id} className="py-4 flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-full">
-                      <BanknotesIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <p className="font-medium text-text-primary">{account.name}</p>
-                  </div>
-                  <p className="font-semibold text-lg text-success">{formatCurrency(account.balance)}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-text-secondary">Nenhuma conta cadastrada.</p>
-            </div>
-          )}
+          <h3 className="text-xl font-semibold mb-4 text-text-primary">Balanço das Contas</h3>
+          <AccountBalanceChart />
         </div>
       </div>
     </>
