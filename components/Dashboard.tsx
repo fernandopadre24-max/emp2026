@@ -19,6 +19,11 @@ type LoanStatusVisibility = {
 };
 type LoanStatusChartType = 'pie' | 'bar';
 
+const formatCurrencyForAxis = (value: number): string => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+    return String(value);
+};
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
     <div className="bg-surface-100 rounded-xl shadow-lg p-6 flex items-center space-x-4">
@@ -84,36 +89,41 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
     const monthlyRevenueData = useMemo(() => {
         const now = new Date();
         let months: { label: string; year: number; month: number; total: number; }[] = [];
+        
+        const currentUTCFullYear = now.getUTCFullYear();
+        const currentUTCMonth = now.getUTCMonth();
 
         if (revenueFilter === '12m') {
             months = Array.from({ length: 12 }, (_, i) => {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), total: 0 };
+                const d = new Date(Date.UTC(currentUTCFullYear, currentUTCMonth - i, 1));
+                return { label: d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }), year: d.getUTCFullYear(), month: d.getUTCMonth(), total: 0 };
             }).reverse();
         } else if (revenueFilter === 'ytd') {
-            months = Array.from({ length: now.getMonth() + 1 }, (_, i) => {
-                const d = new Date(now.getFullYear(), i, 1);
-                return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: i, total: 0 };
+            months = Array.from({ length: currentUTCMonth + 1 }, (_, i) => {
+                const d = new Date(Date.UTC(currentUTCFullYear, i, 1));
+                return { label: d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }), year: d.getUTCFullYear(), month: d.getUTCMonth(), total: 0 };
             });
         } else { // 6m default
             months = Array.from({ length: 6 }, (_, i) => {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                return { label: d.toLocaleString('default', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), total: 0 };
+                const d = new Date(Date.UTC(currentUTCFullYear, currentUTCMonth - i, 1));
+                return { label: d.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }), year: d.getUTCFullYear(), month: d.getUTCMonth(), total: 0 };
             }).reverse();
         }
         
         transactions.forEach(tx => {
-            const txDate = new Date(tx.date);
-            const txYear = txDate.getFullYear();
-            const txMonth = txDate.getMonth();
+            if (tx.amount > 0) {
+                const txDate = new Date(tx.date);
+                const txYear = txDate.getUTCFullYear();
+                const txMonth = txDate.getUTCMonth();
 
-            const monthData = months.find(m => m.year === txYear && m.month === txMonth);
-            if (monthData) {
-                monthData.total += tx.amount;
+                const monthData = months.find(m => m.year === txYear && m.month === txMonth);
+                if (monthData) {
+                    monthData.total += tx.amount;
+                }
             }
         });
 
-        const maxRevenue = Math.max(...months.map(m => m.total), 1);
+        const maxRevenue = Math.max(...months.map(m => m.total), 0);
         return { months, maxRevenue };
     }, [transactions, revenueFilter]);
     
@@ -168,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         const overdueOffset = filteredLoanStatusData.paidOff.percent + filteredLoanStatusData.onTime.percent;
 
         return (
-            <svg width="150" height="150" viewBox="0 0 36 36">
+            <svg width="150" height="150" viewBox="0 0 36 36" aria-label="Gráfico de pizza da situação dos empréstimos">
                 <circle cx="18" cy="18" r="16" fill="var(--color-surface-300)" />
                 <circle cx="18" cy="18" r="8" fill="transparent" stroke="var(--color-success)" strokeWidth="16"
                     strokeDasharray={`${filteredLoanStatusData.paidOff.percent} 100`}
@@ -198,11 +208,13 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
         const maxValue = Math.max(...data.map(d => d.value), 1);
 
         return (
-            <div className="flex justify-around items-end h-[150px] w-[150px] space-x-4">
+            <div className="flex justify-around items-end h-[150px] w-[150px] space-x-4" aria-label="Gráfico de barras da situação dos empréstimos">
                 {data.map((item, index) => (
                     <div key={index} className="flex flex-col items-center group w-full h-full">
                          <div className="relative flex-grow flex items-end w-full">
                              <div 
+                                 role="bar"
+                                 aria-label={`${item.label}: ${item.value}`}
                                  title={`${item.label}: ${item.value}`}
                                  className={`w-full ${item.color} rounded-t-md hover:opacity-80 transition-all duration-300 cursor-pointer`}
                                  style={{ height: `${(item.value / maxValue) * 100}%` }}
@@ -233,6 +245,97 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
                 ))}
             </div>
         )
+    };
+    
+    const RevenueChart = () => {
+        const { months, maxRevenue } = monthlyRevenueData;
+        
+        const getChartYAxis = (maxVal: number) => {
+            if (maxVal <= 0) return { ticks: [0, 25, 50, 75, 100], top: 100 };
+
+            const numTicks = 4;
+            const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+            const residual = maxVal / magnitude;
+            let tickSize;
+
+            if (residual > 5) tickSize = 2 * magnitude;
+            else if (residual > 2) tickSize = magnitude;
+            else if (residual > 1) tickSize = 0.5 * magnitude;
+            else tickSize = 0.2 * magnitude;
+            
+            const top = Math.ceil(maxVal / tickSize) * tickSize;
+            
+            const ticks = [];
+            const step = top / numTicks;
+            for (let i = 0; i <= numTicks; i++) {
+                ticks.push(i * step);
+            }
+
+            return { ticks, top };
+        };
+
+        const { ticks: yTicks, top: yAxisTop } = useMemo(() => getChartYAxis(maxRevenue), [maxRevenue]);
+        
+        const CHART_HEIGHT = 192; // Corresponds to h-48
+        const PADDING = { top: 10, right: 10, bottom: 25, left: 45 };
+
+        const barWidth = 30;
+        const barSpacing = 20;
+        const chartWidth = PADDING.left + PADDING.right + months.length * (barWidth + barSpacing);
+        const chartHeight = CHART_HEIGHT;
+        const plotHeight = chartHeight - PADDING.top - PADDING.bottom;
+
+        return (
+            <div className="h-48 w-full overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+                <svg width={chartWidth} height={chartHeight} aria-label="Gráfico de Receita Mensal">
+                    <g role="presentation">
+                        {yTicks.map((tick, i) => {
+                            const y = PADDING.top + plotHeight - (yAxisTop > 0 ? (tick / yAxisTop) * plotHeight : 0);
+                            if (y < PADDING.top) return null;
+                            return (
+                                <g key={tick} className="text-text-secondary">
+                                    <line 
+                                        x1={PADDING.left} 
+                                        x2={chartWidth - PADDING.right} 
+                                        y1={y} y2={y} 
+                                        stroke="var(--color-surface-300)"
+                                        strokeDasharray={i === 0 ? "none" : "2,3"}
+                                    />
+                                    <text x={PADDING.left - 8} y={y + 4} textAnchor="end" className="text-xs fill-current">
+                                        {formatCurrencyForAxis(tick)}
+                                    </text>
+                                </g>
+                            );
+                        })}
+                    </g>
+                    <g role="list" aria-label="Barras de receita">
+                        {months.map((month, index) => {
+                            const x = PADDING.left + index * (barWidth + barSpacing) + barSpacing / 2;
+                            const barHeight = yAxisTop > 0 ? (month.total / yAxisTop) * plotHeight : 0;
+                            const y = chartHeight - PADDING.bottom - barHeight;
+
+                            return (
+                                <g key={month.label} role="listitem" aria-label={`${month.label}: ${formatCurrency(month.total)}`}>
+                                    <rect 
+                                        x={x}
+                                        y={y}
+                                        width={barWidth}
+                                        height={barHeight > 0 ? barHeight : 0}
+                                        rx="3"
+                                        className="fill-primary/60 hover:fill-primary transition-colors cursor-pointer"
+                                    >
+                                        <title>{`${month.label}: ${formatCurrency(month.total)}`}</title>
+                                    </rect>
+                                    <text x={x + barWidth / 2} y={chartHeight - PADDING.bottom + 15} textAnchor="middle" className="text-xs fill-text-secondary">
+                                        {month.label}
+                                    </text>
+                                </g>
+                            );
+                        })}
+                    </g>
+                </svg>
+            </div>
+        );
     };
 
   return (
@@ -281,20 +384,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loans, clients, transactions, acc
                 <h3 className="text-xl font-semibold text-text-primary">Receita Mensal</h3>
                 <RevenueChartFilter />
               </div>
-              <div className="flex justify-around items-end h-48">
-                {monthlyRevenueData.months.map((month, index) => (
-                    <div key={index} className="flex flex-col items-center group w-full">
-                        <div className="relative flex-grow flex items-end w-full px-1">
-                           <div 
-                                title={`${month.label}: ${formatCurrency(month.total)}`}
-                                className="w-full bg-primary/20 rounded-t-md hover:bg-primary transition-all duration-300 cursor-pointer"
-                                style={{ height: `${(month.total / monthlyRevenueData.maxRevenue) * 100}%` }}
-                            ></div>
-                        </div>
-                        <span className="text-xs text-text-secondary mt-2">{month.label}</span>
-                    </div>
-                ))}
-              </div>
+              <RevenueChart />
           </div>
       </div>
 
