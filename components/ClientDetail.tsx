@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Client, Loan, Transaction, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import { formatCPF, formatPhone } from '../utils/formatters';
-import { ArrowUturnLeftIcon, UserIcon, PhoneIcon, MapPinIcon, HashtagIcon, ArrowDownCircleIcon, ArrowUpCircleIcon } from './icons/Icons';
+import { ArrowUturnLeftIcon, UserIcon, PhoneIcon, MapPinIcon, HashtagIcon, ArrowDownCircleIcon, ArrowUpCircleIcon, ArrowDownTrayIcon } from './icons/Icons';
 
 interface ClientDetailProps {
   client: Client;
@@ -41,17 +41,73 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ client, loans, transactions
         return { text: 'Ativo', className: 'bg-blue-100 text-blue-800' };
     };
 
+    const handleExportCSV = () => {
+        const escapeCSV = (str: string | number) => `"${String(str).replace(/"/g, '""')}"`;
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+
+        // Client Details
+        csvContent += "Detalhes do Cliente\n";
+        const clientHeaders = ["ID do Cliente", "Nome", "CPF", "Telefone", "Endereço"];
+        const clientData = [client.id, client.name, formatCPF(client.cpf), formatPhone(client.phone), client.address];
+        csvContent += clientHeaders.map(escapeCSV).join(',') + '\n';
+        csvContent += clientData.map(escapeCSV).join(',') + '\n\n';
+
+        // Loans Summary
+        if (loans.length > 0) {
+            csvContent += "Resumo de Empréstimos\n";
+            const loanHeaders = ["ID Empréstimo", "Código", "Valor Principal", "Taxa Juros (%)", "Nº Parcelas", "Data Início", "Status"];
+            csvContent += loanHeaders.map(escapeCSV).join(',') + '\n';
+            loans.forEach(loan => {
+                const status = getLoanStatus(loan).text;
+                const loanRow = [loan.id, loan.code, loan.principal, loan.interestRate, loan.installmentsCount, formatDate(loan.startDate), status];
+                csvContent += loanRow.map(escapeCSV).join(',') + '\n';
+            });
+            csvContent += '\n';
+        }
+        
+        // Transactions History
+        if (transactions.length > 0) {
+            csvContent += "Histórico de Transações\n";
+            const transactionHeaders = ["ID Transação", "Data", "Descrição", "Tipo", "Valor (R$)"];
+            csvContent += transactionHeaders.map(escapeCSV).join(',') + '\n';
+            transactions.forEach(tx => {
+                const transactionRow = [tx.id, formatDate(tx.date), tx.description, tx.type, String(tx.amount).replace('.',',')];
+                csvContent += transactionRow.map(escapeCSV).join(',') + '\n';
+            });
+        }
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        const fileName = `relatorio_cliente_${client.name.toLowerCase().replace(/\s+/g, '_')}.csv`;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+
     return (
         <div className="animate-fade-in">
             <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold text-text-primary">Detalhes do Cliente</h1>
-                <button
-                    onClick={onBack}
-                    className="flex items-center px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300 transition-colors text-sm font-semibold"
-                >
-                    <ArrowUturnLeftIcon className="w-5 h-5 mr-2" />
-                    Voltar para a Lista
-                </button>
+                <div className="flex items-center gap-x-2">
+                    <button
+                        onClick={handleExportCSV}
+                        className="flex items-center px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary-hover transition-colors text-sm font-semibold"
+                    >
+                        <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
+                        Exportar CSV
+                    </button>
+                    <button
+                        onClick={onBack}
+                        className="flex items-center px-4 py-2 bg-gray-200 text-text-secondary rounded-md hover:bg-gray-300 transition-colors text-sm font-semibold"
+                    >
+                        <ArrowUturnLeftIcon className="w-5 h-5 mr-2" />
+                        Voltar para a Lista
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

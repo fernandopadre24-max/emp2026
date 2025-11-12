@@ -335,24 +335,29 @@ const App: React.FC = () => {
       case 'clients': {
         const selectedClient = clients.find(c => c.id === selectedClientId);
 
-        if (selectedClient) {
-            return (
-                <ClientDetail
-                    client={selectedClient}
-                    loans={loans.filter(l => l.clientId === selectedClientId)}
-                    transactions={transactions.filter(t => t.clientId === selectedClientId)}
-                    onBack={handleBackToClientList}
-                />
-            );
-        }
         return (
-            <ClientList
-                clients={clients}
-                onEdit={handleEditClient}
-                onDelete={handleDeleteClient}
-                onNewClient={() => setIsClientModalOpen(true)}
-                onSelectClient={handleSelectClient}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className={selectedClient ? 'hidden lg:block lg:col-span-1' : 'lg:col-span-3'}>
+                    <ClientList
+                        clients={clients}
+                        onEdit={handleEditClient}
+                        onDelete={handleDeleteClient}
+                        onNewClient={() => setIsClientModalOpen(true)}
+                        onSelectClient={handleSelectClient}
+                        selectedClientId={selectedClientId}
+                    />
+                </div>
+                {selectedClient && (
+                    <div className="lg:col-span-2">
+                        <ClientDetail
+                            client={selectedClient}
+                            loans={loans.filter(l => l.clientId === selectedClientId)}
+                            transactions={transactions.filter(t => t.clientId === selectedClientId)}
+                            onBack={handleBackToClientList}
+                        />
+                    </div>
+                )}
+            </div>
         );
     }
       case 'accounts':
