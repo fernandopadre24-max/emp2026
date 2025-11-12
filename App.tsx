@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Client, Loan, Account, Transaction, View, Payment, Installment } from './types';
+import { Client, Loan, Account, Transaction, View, Payment, Installment, Receipt } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { initialClients, initialLoans, initialAccounts, initialTransactions } from './utils/seedData';
 import { updateInstallmentStatus } from './utils/loanCalculator';
@@ -263,7 +263,7 @@ const App: React.FC = () => {
     });
   };
 
-  const recordPayment = (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string) => {
+  const recordPayment = (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string, receipt?: Receipt) => {
     const loanToUpdate = loans.find(l => l.id === loanId);
     const accountToUpdate = accounts.find(a => a.id === accountId);
 
@@ -278,7 +278,7 @@ const App: React.FC = () => {
     // Update loan with new payment
     updatedLoan.installments = updatedLoan.installments.map(inst => {
       if (inst.number === installmentNumber) {
-        const newPayment: Payment = { id: paymentId, amount, date: new Date().toISOString(), accountId, method, pixKey };
+        const newPayment: Payment = { id: paymentId, amount, date: new Date().toISOString(), accountId, method, pixKey, receipt };
         const updatedPayments = [...inst.payments, newPayment];
         const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
         const remaining = inst.amount - totalPaid;
@@ -307,6 +307,7 @@ const App: React.FC = () => {
       description: `Pag. Parcela #${installmentNumber} - ${clientName}`,
       method,
       pixKey,
+      receipt,
     };
     setTransactions(prev => [...prev, newTransaction]);
   };

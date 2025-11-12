@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Account, Transaction, Client } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
-import { BanknotesIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, PencilIcon, TrashIcon, PlusIcon } from './icons/Icons';
+import { BanknotesIcon, ArrowUturnLeftIcon, CurrencyDollarIcon, PencilIcon, TrashIcon, PlusIcon, PaperClipIcon } from './icons/Icons';
 
 interface AccountsListProps {
   accounts: Account[];
@@ -72,6 +72,11 @@ const AccountsList: React.FC<AccountsListProps> = ({ accounts, transactions, cli
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
                          <div className="flex items-center justify-end space-x-2">
+                            {tx.receipt && (
+                                <a href={tx.receipt.data} download={tx.receipt.name} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full hover:bg-green-100 dark:hover:bg-green-500/20" title="Ver Recibo">
+                                    <PaperClipIcon className="w-4 h-4 text-green-600" />
+                                </a>
+                            )}
                             {tx.type !== 'payment' && (
                                 <button onClick={() => onEditTransaction(tx)} className="p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors" title="Editar Movimento">
                                     <PencilIcon className="w-4 h-4 text-blue-600" />

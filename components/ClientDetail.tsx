@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Client, Loan, Transaction, Payment } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import { formatCPF, formatPhone } from '../utils/formatters';
-import { ArrowUturnLeftIcon, UserIcon, PhoneIcon, MapPinIcon, HashtagIcon, ArrowDownCircleIcon, ArrowUpCircleIcon, ArrowDownTrayIcon } from './icons/Icons';
+import { ArrowUturnLeftIcon, UserIcon, PhoneIcon, MapPinIcon, HashtagIcon, ArrowDownCircleIcon, ArrowUpCircleIcon, ArrowDownTrayIcon, PaperClipIcon } from './icons/Icons';
 
 interface ClientDetailProps {
   client: Client;
@@ -69,10 +69,10 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ client, loans, transactions
         // Transactions History
         if (transactions.length > 0) {
             csvContent += "Histórico de Transações\n";
-            const transactionHeaders = ["ID Transação", "Data", "Descrição", "Tipo", "Valor (R$)"];
+            const transactionHeaders = ["ID Transação", "Data", "Descrição", "Tipo", "Valor (R$)", "Recibo"];
             csvContent += transactionHeaders.map(escapeCSV).join(',') + '\n';
             transactions.forEach(tx => {
-                const transactionRow = [tx.id, formatDate(tx.date), tx.description, tx.type, String(tx.amount).replace('.',',')];
+                const transactionRow = [tx.id, formatDate(tx.date), tx.description, tx.type, String(tx.amount).replace('.',','), tx.receipt ? 'Sim' : 'Não'];
                 csvContent += transactionRow.map(escapeCSV).join(',') + '\n';
             });
         }
@@ -236,7 +236,14 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ client, loans, transactions
                                                             {tx.method && <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">{tx.method}</span>}
                                                         </div>
                                                     </div>
-                                                    <p className="font-semibold text-success">{formatCurrency(tx.amount)}</p>
+                                                    <div className="flex items-center space-x-2">
+                                                        {tx.receipt && (
+                                                            <a href={tx.receipt.data} download={tx.receipt.name} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full hover:bg-green-100 dark:hover:bg-green-500/20" title="Ver Recibo">
+                                                                <PaperClipIcon className="w-4 h-4 text-green-600" />
+                                                            </a>
+                                                        )}
+                                                        <p className="font-semibold text-success">{formatCurrency(tx.amount)}</p>
+                                                    </div>
                                                 </div>
                                             </li>
                                         ))}

@@ -23,6 +23,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
   const [principal, setPrincipal] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [iofRate, setIofRate] = useState('');
+  const [iofAmount, setIofAmount] = useState('');
   const [installmentsCount, setInstallmentsCount] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -41,6 +42,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       setPrincipal(String(loanToEdit.principal));
       setInterestRate(String(loanToEdit.interestRate));
       setIofRate(String(loanToEdit.iofRate || ''));
+      setIofAmount(String(loanToEdit.iofAmount || ''));
       setInstallmentsCount(String(loanToEdit.installmentsCount));
       setStartDate(loanToEdit.startDate);
     } else {
@@ -52,7 +54,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
   // Clear simulation results if core values change
   useEffect(() => {
       setSimulationResults(null);
-  }, [principal, interestRate, installmentsCount, startDate, iofRate]);
+  }, [principal, interestRate, installmentsCount, startDate, iofRate, iofAmount]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -65,6 +67,34 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const handlePrincipalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPrincipalStr = e.target.value;
+    setPrincipal(newPrincipalStr);
+
+    const newPrincipal = parseFloat(newPrincipalStr);
+    const rate = parseFloat(iofRate);
+    if (!isNaN(newPrincipal) && newPrincipal > 0 && !isNaN(rate) && rate >= 0) {
+        const calculatedIof = newPrincipal * (rate / 100);
+        setIofAmount(calculatedIof.toFixed(2));
+    } else if (newPrincipalStr === '' || newPrincipal <= 0) {
+        setIofAmount('');
+    }
+  };
+
+  const handleIofRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newRateStr = e.target.value;
+    setIofRate(newRateStr);
+
+    const p = parseFloat(principal);
+    const newRate = parseFloat(newRateStr);
+    if (!isNaN(p) && p > 0 && !isNaN(newRate) && newRate >= 0) {
+        const calculatedIof = p * (newRate / 100);
+        setIofAmount(calculatedIof.toFixed(2));
+    } else if (newRateStr === '' || newRate < 0) {
+        setIofAmount('');
+    }
+  };
   
   const handleSimulate = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -73,7 +103,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
     const p = parseFloat(principal);
     const ir = parseFloat(interestRate);
     const ic = parseInt(installmentsCount, 10);
-    const iof = parseFloat(iofRate) || 0;
+    const iofAmt = parseFloat(iofAmount) || 0;
 
     if(isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
         setError("Para simular, preencha os campos de valor, juros e parcelas com valores positivos.");
@@ -81,15 +111,14 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
         return;
     }
 
-    const iofAmount = iof > 0 ? p * (iof / 100) : 0;
-    const financedAmount = p + iofAmount;
+    const financedAmount = p + iofAmt;
     const installments = calculateAmortization(financedAmount, ir / 100, ic, startDate);
 
     if (installments.length === 0) {
         setError("Não foi possível calcular a simulação. Verifique os valores inseridos.");
         setSimulationResults(null);
     } else {
-        setSimulationResults({ installments, iofAmount });
+        setSimulationResults({ installments, iofAmount: iofAmt });
     }
   };
 
@@ -100,7 +129,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
     const p = parseFloat(principal);
     const ir = parseFloat(interestRate);
     const ic = parseInt(installmentsCount, 10);
-    const iof = parseFloat(iofRate) || 0;
+    const iofR = parseFloat(iofRate) || 0;
+    const iofAmt = parseFloat(iofAmount) || 0;
 
     if(!clientId || !accountId || isNaN(p) || isNaN(ir) || isNaN(ic) || p <= 0 || ir <= 0 || ic <= 0) {
         setError("Por favor, preencha todos os campos com valores numéricos positivos e válidos.");
@@ -119,14 +149,13 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       }
     }
     
-    const iofAmount = iof > 0 ? p * (iof / 100) : 0;
-    const financedAmount = p + iofAmount;
+    const financedAmount = p + iofAmt;
 
     if (isEditMode) {
         const needsRecalculation = !hasPayments && (
             p !== loanToEdit.principal || 
             ir !== loanToEdit.interestRate || 
-            iof !== (loanToEdit.iofRate || 0) ||
+            iofAmt !== (loanToEdit.iofAmount || 0) ||
             ic !== loanToEdit.installmentsCount ||
             startDate !== loanToEdit.startDate
         );
@@ -140,8 +169,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           clientId,
           principal: p,
           interestRate: ir,
-          iofRate: iof,
-          iofAmount: iofAmount,
+          iofRate: iofR,
+          iofAmount: iofAmt,
           installmentsCount: ic,
           startDate,
           installments,
@@ -159,8 +188,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           accountId,
           principal: p,
           interestRate: ir,
-          iofRate: iof,
-          iofAmount: iofAmount,
+          iofRate: iofR,
+          iofAmount: iofAmt,
           installmentsCount: ic,
           startDate,
           installments,
@@ -200,7 +229,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Valor Principal (R$)</label>
-          <input type="number" step="0.01" value={principal} onChange={(e) => setPrincipal(e.target.value)} className={inputStyles} required disabled={hasPayments} />
+          <input type="number" step="0.01" value={principal} onChange={handlePrincipalChange} className={inputStyles} required disabled={hasPayments} />
         </div>
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Nº de Parcelas</label>
@@ -212,9 +241,18 @@ const LoanForm: React.FC<LoanFormProps> = ({ clients, accounts, addLoan, updateL
           <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros Mensal (%)</label>
           <input type="number" step="0.01" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} className={inputStyles} required disabled={hasPayments} />
         </div>
-         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de IOF (%) <span className="text-xs">(Opcional)</span></label>
-          <input type="number" step="0.01" value={iofRate} onChange={(e) => setIofRate(e.target.value)} className={inputStyles} disabled={hasPayments} placeholder="Ex: 0.38"/>
+        <div>
+           {/* Empty div for layout alignment, or add another field here if needed */}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de IOF (%) <span className="text-xs">(Opcional)</span></label>
+            <input type="number" step="0.01" value={iofRate} onChange={handleIofRateChange} className={inputStyles} disabled={hasPayments} placeholder="Ex: 0.38"/>
+        </div>
+        <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Valor do IOF (R$)</label>
+            <input type="number" step="0.01" value={iofAmount} onChange={(e) => setIofAmount(e.target.value)} className={inputStyles} disabled={hasPayments} placeholder="Calculado ou manual"/>
         </div>
       </div>
       <div className="relative" ref={calendarRef}>

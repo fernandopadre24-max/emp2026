@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 // FIX: Import the `Installment` type to resolve a TypeScript error.
 // FIX: Import the `Payment` type to correctly type the onRecordPayment prop.
-import { Client, Loan, Account, Installment, Payment } from '../types';
+import { Client, Loan, Account, Installment, Payment, Receipt } from '../types';
 import { formatCurrency, formatDate } from '../utils/loanCalculator';
 import AmortizationTable from './AmortizationTable';
 import { ChevronDownIcon, PencilIcon, TrashIcon, BuildingLibraryIcon } from './icons/Icons';
@@ -10,7 +10,7 @@ interface LoanListProps {
   loans: Loan[];
   clients: Client[];
   accounts: Account[];
-  onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string) => void;
+  onRecordPayment: (loanId: string, installmentNumber: number, amount: number, accountId: string, method: Payment['method'], pixKey?: string, receipt?: Receipt) => void;
   onEdit: (loan: Loan) => void;
   onDelete: (loanId: string) => void;
 }
