@@ -84,7 +84,7 @@ function ClientCard({
   );
 }
 
-function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[] }) {
+function ClientDetails({ client, loans, accounts }: { client: Client | null; loans: Loan[]; accounts: any[] }) {
   if (!client) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -202,21 +202,26 @@ function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[]
                     <TableRow>
                         <TableHead>Data</TableHead>
                         <TableHead>ID Empréstimo</TableHead>
+                        <TableHead>Conta</TableHead>
                         <TableHead>Forma</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {allClientPayments.map((payment) => (
+                    {allClientPayments.map((payment) => {
+                      const account = accounts.find(a => a.id === payment.destinationAccountId);
+                      return (
                         <TableRow key={payment.id}>
                             <TableCell>{new Date(payment.paymentDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
                             <TableCell className="font-mono text-xs">{payment.loanId}</TableCell>
+                            <TableCell>{account?.name || 'N/D'}</TableCell>
                             <TableCell>
                                 <Badge variant="secondary">{payment.method || 'N/D'}</Badge>
                             </TableCell>
                             <TableCell className="text-right font-medium text-green-400">{formatCurrency(payment.amount)}</TableCell>
                         </TableRow>
-                    ))}
+                      );
+                    })}
                 </TableBody>
             </Table>
           ) : (
@@ -231,7 +236,7 @@ function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[]
 }
 
 export default function ClientesPage() {
-  const { clients, loans } = useFinancialData();
+  const { clients, loans, accounts } = useFinancialData();
   const [selectedClientId, setSelectedClientId] = React.useState<string | null>(clients[2]?.id || null);
   const [search, setSearch] = React.useState('');
 
@@ -280,7 +285,7 @@ export default function ClientesPage() {
         
         {/* Right Column */}
         <div className="h-[calc(100vh-100px)] overflow-y-auto pr-2">
-           <ClientDetails client={selectedClient || null} loans={loans} />
+           <ClientDetails client={selectedClient || null} loans={loans} accounts={accounts} />
         </div>
     </div>
   );
