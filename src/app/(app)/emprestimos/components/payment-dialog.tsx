@@ -32,6 +32,7 @@ interface PaymentDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   installment: Installment | null;
   loan: Loan | null;
+  onPaymentSuccess: (loanId: string, installmentNumber: number, amount: number, paymentDate: string, paymentMethod: string) => void;
 }
 
 export function PaymentDialog({
@@ -39,6 +40,7 @@ export function PaymentDialog({
   onOpenChange,
   installment,
   loan,
+  onPaymentSuccess,
 }: PaymentDialogProps) {
   const [amount, setAmount] = React.useState('');
   const [paymentDate, setPaymentDate] = React.useState('');
@@ -56,31 +58,25 @@ export function PaymentDialog({
   const handlePayment = () => {
     if (!loan || !installment) return;
 
-    // In a real app, this would be a server action
-    console.log({
-      loanId: loan.id,
-      installmentNumber: installment.number,
-      amount: parseFloat(amount),
-      paymentDate,
-      paymentMethod,
-    });
+    const paymentAmount = parseFloat(amount);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Valor Inválido',
+        description: 'Por favor, insira um valor de pagamento válido.',
+      });
+      return;
+    }
+
+    onPaymentSuccess(loan.id, installment.number, paymentAmount, paymentDate, paymentMethod);
 
     toast({
       title: 'Pagamento Registrado!',
       description: `Pagamento de ${formatCurrency(
-        parseFloat(amount)
+        paymentAmount
       )} registrado para a parcela #${installment.number}.`,
       className: 'bg-primary text-primary-foreground',
     });
-
-    // This is just a client-side simulation.
-    // In a real app, you would re-fetch the data.
-    installment.paidAmount += parseFloat(amount);
-    if (installment.paidAmount >= installment.amount) {
-        installment.status = 'Pago';
-    } else {
-        installment.status = 'Parcialmente Pago';
-    }
 
     onOpenChange(false);
   };

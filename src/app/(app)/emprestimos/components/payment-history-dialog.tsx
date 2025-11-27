@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
-import type { Loan, Payment } from '@/lib/types';
+import type { Loan } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 
 type Installment = Loan['installments'][0];
@@ -32,16 +32,6 @@ interface PaymentHistoryDialogProps {
   loan: Loan | null;
 }
 
-// Mock payment history data. In a real app, this would come from an API.
-const mockHistory: (Payment & { method: string })[] = [
-    { id: 'PAG-001-A', loanId: 'EMP-232570', installmentNumber: 1, amount: 525.0, paymentDate: '2025-12-05', method: 'PIX' },
-    { id: 'PAG-002-A', loanId: 'EMP-761238', installmentNumber: 1, amount: 105.0, paymentDate: '2025-12-15', method: 'Boleto' },
-    { id: 'PAG-002-B', loanId: 'EMP-761238', installmentNumber: 2, amount: 105.0, paymentDate: '2026-01-15', method: 'PIX' },
-    { id: 'PAG-002-C', loanId: 'EMP-761238', installmentNumber: 3, amount: 105.0, paymentDate: '2026-02-14', method: 'Dinheiro' },
-    { id: 'PAG-002-D', loanId: 'EMP-761238', installmentNumber: 4, amount: 105.0, paymentDate: '2026-03-15', method: 'PIX' },
-    { id: 'PAG-002-E', loanId: 'EMP-761238', installmentNumber: 5, amount: 105.0, paymentDate: '2026-04-15', method: 'PIX' },
-];
-
 export function PaymentHistoryDialog({
   isOpen,
   onOpenChange,
@@ -50,8 +40,8 @@ export function PaymentHistoryDialog({
 }: PaymentHistoryDialogProps) {
   if (!installment || !loan) return null;
 
-  const paymentHistory = mockHistory.filter(
-    (p) => p.loanId === loan.id && p.installmentNumber === installment.number
+  const paymentHistory = loan.payments.filter(
+    (p) => p.installmentNumber === installment.number
   );
 
   return (
@@ -81,7 +71,7 @@ export function PaymentHistoryDialog({
                       {new Date(payment.paymentDate + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{payment.method}</Badge>
+                      <Badge variant="secondary">{payment.method || 'N/A'}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(payment.amount)}

@@ -26,15 +26,16 @@ export type Loan = {
     status: 'Pendente' | 'Pago' | 'Parcialmente Pago' | 'Atrasado';
   }[];
   status: 'Ativo' | 'Atrasado' | 'Pago' | 'Pendente' | 'Quitado';
-  payments: Payment[]; // This can be deprecated or used for history
+  payments: Payment[];
 };
 
 export type Payment = {
   id: string;
   loanId: string;
-  installmentNumber?: number; // Optional: To link payment to a specific installment
+  installmentNumber: number;
   amount: number;
   paymentDate: string;
+  method?: string; // e.g., 'PIX', 'Boleto'
 };
 
 export type Transaction = {

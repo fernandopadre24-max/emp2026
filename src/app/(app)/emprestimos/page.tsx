@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { loans as initialLoans } from '@/lib/data';
 import { PlusCircle, Edit, Trash2, Banknote, ChevronDown, ChevronUp, DollarSign, List, AlertTriangle } from 'lucide-react';
-import type { Loan } from '@/lib/types';
+import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Table,
@@ -31,6 +31,7 @@ import { PaymentHistoryDialog } from './components/payment-history-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
+type Installment = Loan['installments'][0];
 
 const LoanStatusFilters = ({ activeFilter, setActiveFilter }: { activeFilter: LoanStatus, setActiveFilter: (filter: LoanStatus) => void }) => {
     const filters: LoanStatus[] = ['Todos', 'Ativo', 'Atrasado', 'Pendente', 'Quitado'];
@@ -57,8 +58,7 @@ const LoanStatusFilters = ({ activeFilter, setActiveFilter }: { activeFilter: Lo
     )
 }
 
-const AmortizationPlan = ({ loan }: { loan: Loan }) => {
-    type Installment = Loan['installments'][0];
+const AmortizationPlan = ({ loan, onPaymentMade }: { loan: Loan, onPaymentMade: () => void }) => {
     const [isPaymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
     const [isHistoryDialogOpen, setHistoryDialogOpen] = React.useState(false);
     const [selectedInstallment, setSelectedInstallment] = React.useState<Installment | null>(null);
@@ -145,6 +145,7 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
         onOpenChange={setPaymentDialogOpen}
         installment={selectedInstallment}
         loan={loan}
+        onPaymentSuccess={onPaymentMade}
     />
     <PaymentHistoryDialog
         isOpen={isHistoryDialogOpen}
@@ -157,9 +158,8 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
 };
 
 
-const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, onDelete: () => void }) => {
+const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdit: () => void, onDelete: () => void, onPaymentMade: () => void }) => {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [forceUpdate, setForceUpdate] = React.useState(0);
 
   const totalInstallments = loan.installments.length;
   const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
@@ -181,26 +181,16 @@ const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, 
     }
   };
 
-  // Hack to force re-render when installment status changes inside the dialog
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-        if(isOpen) setForceUpdate(Date.now())
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isOpen])
-
   return (
      <div className="bg-card border border-border rounded-lg mb-4">
        <Accordion type="single" collapsible onValueChange={(value) => setIsOpen(!!value)}>
          <AccordionItem value={loan.id} className="border-none">
-            <div className="p-4 rounded-t-lg flex items-start justify-between data-[state=open]:bg-card-foreground/5">
+            <AccordionTrigger className="w-full p-4 hover:no-underline rounded-t-lg data-[state=open]:bg-card-foreground/5 flex items-start justify-between">
                 <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
                     <div className="flex-1">
-                      <AccordionTrigger className="w-full p-0 hover:no-underline">
                         <div className="flex items-center gap-4 flex-wrap">
                             <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
                         </div>
-                      </AccordionTrigger>
                         <div className="flex items-center gap-2 flex-wrap mt-2">
                             <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
                             <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
@@ -228,18 +218,16 @@ const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, 
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-col items-center gap-2">
+                <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-2 pl-4">
                   <div className="flex items-center">
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
                   </div>
-                  <AccordionTrigger className="p-2 hover:no-underline">
-                     {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </AccordionTrigger>
+                   {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </div>
-            </div>
+            </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
-            <AmortizationPlan loan={loan} />
+            <AmortizationPlan loan={loan} onPaymentMade={onPaymentMade} />
           </AccordionContent>
          </AccordionItem>
        </Accordion>
@@ -282,6 +270,47 @@ export default function EmprestimosPage() {
     });
     setDeletingLoan(null);
   }
+  
+  const handlePayment = (loanId: string, installmentNumber: number, paymentAmount: number, paymentDate: string, paymentMethod: string) => {
+    setLoans(prevLoans => {
+      return prevLoans.map(loan => {
+        if (loan.id === loanId) {
+          const newPayments: Payment[] = [
+            ...loan.payments,
+            {
+              id: `PAG-${Date.now()}`,
+              loanId,
+              installmentNumber,
+              amount: paymentAmount,
+              paymentDate,
+            },
+          ];
+
+          let loanStatus = loan.status;
+          const newInstallments = loan.installments.map(inst => {
+            if (inst.number === installmentNumber) {
+              const newPaidAmount = inst.paidAmount + paymentAmount;
+              let newStatus: Installment['status'] = 'Parcialmente Pago';
+              if (newPaidAmount >= inst.amount) {
+                newStatus = 'Pago';
+              }
+              return { ...inst, paidAmount: newPaidAmount, status: newStatus };
+            }
+            return inst;
+          });
+
+          const allPaid = newInstallments.every(inst => inst.status === 'Pago');
+          if (allPaid) {
+            loanStatus = 'Quitado';
+          }
+
+          return { ...loan, installments: newInstallments, payments: newPayments, status: loanStatus };
+        }
+        return loan;
+      });
+    });
+  };
+
 
   const filteredLoans = React.useMemo(() => {
     if (activeFilter === 'Todos') {
@@ -380,7 +409,7 @@ export default function EmprestimosPage() {
         <LoanStatusFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
       </div>
       <div>
-        {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={() => handleOpenEditLoan(loan)} onDelete={() => handleOpenDeleteDialog(loan)} />)}
+        {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={() => handleOpenEditLoan(loan)} onDelete={() => handleOpenDeleteDialog(loan)} onPaymentMade={() => handlePayment(loan.id, 0, 0, '', '')} />)}
         {filteredLoans.length === 0 && (
             <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-center">
                 <p className="text-muted-foreground">Nenhum empréstimo encontrado para o filtro "{activeFilter}".</p>
