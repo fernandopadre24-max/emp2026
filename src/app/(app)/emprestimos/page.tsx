@@ -26,9 +26,10 @@ import {
 } from '@/components/ui/accordion';
 import { PaymentDialog } from './components/payment-dialog';
 
-const LoanStatusFilters = () => {
-    const [activeFilter, setActiveFilter] = React.useState('Todos');
-    const filters = ['Todos', 'Atrasado', 'Parcialmente Pago', 'Pendente', 'Quitado'];
+type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
+
+const LoanStatusFilters = ({ activeFilter, setActiveFilter }: { activeFilter: LoanStatus, setActiveFilter: (filter: LoanStatus) => void }) => {
+    const filters: LoanStatus[] = ['Todos', 'Atrasado', 'Parcialmente Pago', 'Pendente', 'Quitado'];
 
     return (
         <div className="flex items-center gap-2">
@@ -218,7 +219,23 @@ const LoanCard = ({ loan }: { loan: Loan }) => {
 
 
 export default function EmprestimosPage() {
-  const data = loans;
+  const [activeFilter, setActiveFilter] = React.useState<LoanStatus>('Todos');
+
+  const filteredLoans = React.useMemo(() => {
+    if (activeFilter === 'Todos') {
+      return loans;
+    }
+    // This is a simple mapping. A real app might have more complex logic.
+    const statusMap = {
+        'Atrasado': 'Atrasado',
+        'Quitado': 'Quitado',
+        'Parcialmente Pago': 'Ativo', // Example mapping
+        'Pendente': 'Pendente', // Example mapping
+    }
+    const filterKey = statusMap[activeFilter as keyof typeof statusMap] || activeFilter;
+    
+    return loans.filter(loan => loan.status === filterKey);
+  }, [activeFilter]);
 
   return (
     <div className="text-white">
@@ -240,10 +257,10 @@ export default function EmprestimosPage() {
         }
       />
       <div className="mb-4">
-        <LoanStatusFilters />
+        <LoanStatusFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
       </div>
       <div>
-        {data.map(loan => <LoanCard key={loan.id} loan={loan} />)}
+        {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} />)}
       </div>
     </div>
   );
