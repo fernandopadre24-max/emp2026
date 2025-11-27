@@ -65,7 +65,9 @@ export const columns: ColumnDef<Loan>[] = [
     accessorKey: 'dueDate',
     header: 'Vencimento',
     cell: ({ row }) => {
-        const date = new Date(row.getValue('dueDate'));
+        const dateString = row.getValue('dueDate') as string;
+        // The 'T00:00:00' ensures the date is parsed in the local timezone, preventing hydration errors.
+        const date = new Date(`${dateString}T00:00:00`);
         return <div>{date.toLocaleDateString('pt-BR')}</div>
     }
   },
