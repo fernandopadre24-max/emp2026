@@ -183,9 +183,8 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
     <Accordion type="single" collapsible className="bg-card border border-border rounded-lg mb-4">
       <AccordionItem value={loan.id} className="border-none">
         <div className="flex w-full p-4 items-start justify-between">
-          <div className="flex-1">
-             <AccordionTrigger className="w-full p-0 hover:no-underline text-left">
-              <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start cursor-pointer">
+          <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
+             <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start cursor-pointer">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 flex-wrap">
                       <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
@@ -217,11 +216,11 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
                     </div>
                   </div>
                 </div>
-              </AccordionTrigger>
-          </div>
+          </AccordionTrigger>
           <div className="flex flex-col items-center justify-start gap-1 pl-4">
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
+            <AccordionTrigger className="p-0 [&>svg]:mx-auto"><ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200" /></AccordionTrigger>
           </div>
         </div>
         <AccordionContent className="p-4 pt-0">
@@ -431,3 +430,5 @@ export default function EmprestimosPage() {
     </div>
   );
 }
+
+    
