@@ -217,8 +217,8 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
                 </div>
                  <DialogFooter className="pt-6">
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                    <Button type="button" variant="secondary" className="bg-green-600 hover:bg-green-700 text-white">Simular Empréstimo</Button>
-                    <Button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white">Criar Empréstimo</Button>
+                    <Button type="button" variant="secondary" >Simular Empréstimo</Button>
+                    <Button type="submit">Criar Empréstimo</Button>
                 </DialogFooter>
             </form>
         </Form>
