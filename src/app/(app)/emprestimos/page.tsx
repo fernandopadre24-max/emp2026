@@ -19,8 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-const renderSubComponent = ({ row }: { row: any }) => {
-  const loan = row.original as Loan;
+const renderSubComponent = ({ row: loan }: { row: Loan }) => {
   return (
     <div className="bg-muted/50 p-4 rounded-md">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">

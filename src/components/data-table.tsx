@@ -29,8 +29,8 @@ import { Input } from '@/components/ui/input';
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  renderSubComponent?: (row: any) => React.ReactElement;
-  getRowCanExpand?: (row: any) => boolean;
+  renderSubComponent?: (props: { row: TData }) => React.ReactElement;
+  getRowCanExpand?: (row: TData) => boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -54,7 +54,7 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onExpandedChange: setExpanded,
     getExpandedRowModel: getExpandedRowModel(),
-    getRowCanExpand,
+    getRowCanExpand: row => getRowCanExpand ? getRowCanExpand(row.original) : false,
     state: {
       sorting,
       columnFilters,
@@ -111,7 +111,7 @@ export function DataTable<TData, TValue>({
                   {row.getIsExpanded() && renderSubComponent && (
                     <TableRow>
                       <TableCell colSpan={columns.length}>
-                        {renderSubComponent(row)}
+                        {renderSubComponent({ row: row.original })}
                       </TableCell>
                     </TableRow>
                   )}
