@@ -2,7 +2,7 @@
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Banknote, PlusCircle, ArrowUpRight } from 'lucide-react';
+import { Banknote, PlusCircle, ArrowUpRight, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { accounts } from '@/lib/data';
 import Link from 'next/link';
