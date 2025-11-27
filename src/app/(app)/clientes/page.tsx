@@ -9,10 +9,16 @@ import { Button } from '@/components/ui/button';
 
 type Client = {
   name: string;
+  slug: string;
   totalBorrowed: number;
   activeLoans: number;
   totalLoans: number;
 };
+
+function createSlug(name: string) {
+    return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
 
 export default function ClientesPage() {
   const clients = loans.reduce((acc, loan) => {
@@ -20,6 +26,7 @@ export default function ClientesPage() {
     if (!client) {
       client = {
         name: loan.borrowerName,
+        slug: createSlug(loan.borrowerName),
         totalBorrowed: 0,
         activeLoans: 0,
         totalLoans: 0,
@@ -64,7 +71,7 @@ export default function ClientesPage() {
                 <span className="font-semibold">{client.activeLoans} Ativos / {client.totalLoans} Total</span>
               </div>
                 <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href="#">
+                    <Link href={`/clientes/${client.slug}`}>
                         Ver Detalhes <ArrowUpRight className="ml-2 h-4 w-4" />
                     </Link>
                 </Button>
