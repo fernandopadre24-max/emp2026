@@ -28,14 +28,18 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
         className
       )}
       {...props}
     >
       {children}
-      {/* Fallback to ChevronDown if children doesn't contain an icon */}
-      {!React.Children.toArray(children).some(child => React.isValidElement(child) && (child.type as any).displayName?.includes('icon')) &&
+      {/* Fallback to ChevronDown if children doesn't contain an icon and it's not being controlled externally */}
+      {!React.Children.toArray(children).some(child => 
+          React.isValidElement(child) && 
+          ((child.type as any).displayName?.includes('icon') || ((child.type as any).render?.displayName?.includes('icon')))
+        ) && 
+        !className?.includes('p-4') && // Heuristic to check if it's the full card trigger
         <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
       }
     </AccordionPrimitive.Trigger>
@@ -59,3 +63,5 @@ const AccordionContent = React.forwardRef<
 AccordionContent.displayName = AccordionPrimitive.Content.displayName
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+
+    
