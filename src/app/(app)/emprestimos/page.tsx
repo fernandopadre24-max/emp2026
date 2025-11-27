@@ -185,8 +185,8 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
      <div className="bg-card border border-border rounded-lg mb-4">
        <Accordion type="single" collapsible onValueChange={(value) => setIsOpen(!!value)}>
          <AccordionItem value={loan.id} className="border-none">
-            <div className="w-full p-4 hover:no-underline rounded-t-lg data-[state=open]:bg-card-foreground/5 flex items-start justify-between">
-                <AccordionTrigger className="flex-1 font-medium transition-all w-full">
+            <div className="flex w-full p-4 hover:no-underline rounded-t-lg data-[state=open]:bg-card-foreground/5 items-start justify-between">
+                <AccordionTrigger className="flex-1 font-medium transition-all w-full text-left">
                     <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
                         <div className="flex-1">
                             <div className="flex items-center gap-4 flex-wrap">
@@ -225,7 +225,12 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
                   </div>
-                   {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                   {/* This is a visual indicator for the trigger, it's not a button itself */}
+                   <AccordionTrigger asChild>
+                    <div className="p-1">
+                        {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                   </AccordionTrigger>
                 </div>
             </div>
           <AccordionContent className="p-4 pt-0">
