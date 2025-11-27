@@ -1,3 +1,6 @@
+'use client';
+
+import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import {
   Card,
@@ -14,13 +17,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { loans } from '@/lib/data';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ArrowUpRight, DollarSign, List, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useFinancialData } from '@/context/financial-context';
 
 export default function DashboardPage() {
+  const { loans } = useFinancialData();
   const totalEmprestado = loans.reduce((acc, loan) => acc + loan.amount, 0);
   const totalRecebido = loans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0);
   const emprestimosAtivos = loans.filter(l => l.status === 'Ativo').length;

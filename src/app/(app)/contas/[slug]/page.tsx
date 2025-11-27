@@ -1,16 +1,18 @@
+'use client';
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { accounts } from '@/lib/data';
 import { formatCurrency, cn } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useFinancialData } from '@/context/financial-context';
 
 export default function AccountStatementPage({ params }: { params: { slug: string } }) {
+  const { accounts } = useFinancialData();
   const account = accounts.find(acc => acc.id === params.slug);
 
   if (!account) {

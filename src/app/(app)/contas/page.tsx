@@ -5,15 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import { accounts } from '@/lib/data';
 import Link from 'next/link';
-
-const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
-const totalIncome = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Receita').reduce((acc, t) => acc + t.amount, 0);
-const totalExpenses = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Despesa').reduce((acc, t) => acc + t.amount, 0);
-
+import { useFinancialData } from '@/context/financial-context';
 
 export default function ContasPage() {
+  const { accounts } = useFinancialData();
+  const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
+  const totalIncome = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Receita').reduce((acc, t) => acc + t.amount, 0);
+  const totalExpenses = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Despesa').reduce((acc, t) => acc + t.amount, 0);
+
+
   return (
     <>
       <PageHeader
@@ -67,7 +68,7 @@ export default function ContasPage() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {accounts.map((account) => (
-            <Card key={account.name}>
+            <Card key={account.id}>
                 <CardHeader>
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">

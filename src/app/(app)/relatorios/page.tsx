@@ -4,11 +4,13 @@ import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell, Legend } from 'recharts';
-import { loans } from '@/lib/data';
 import { formatCurrency } from '@/lib/utils';
 import { useMemo } from 'react';
+import { useFinancialData } from '@/context/financial-context';
 
 export default function RelatoriosPage() {
+    const { loans } = useFinancialData();
+
     const chartData = useMemo(() => {
         const monthlyPayments = loans.flatMap(l => l.payments).reduce((acc, payment) => {
             const month = new Date(payment.paymentDate).toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
@@ -25,13 +27,13 @@ export default function RelatoriosPage() {
         const sortedDates = Array.from(dateMap.keys()).sort((a, b) => a.getTime() - b.getTime());
 
         return sortedDates.map(date => dateMap.get(date)!);
-    }, []);
+    }, [loans]);
 
     const statusData = useMemo(() => [
         { name: 'Ativo', value: loans.filter(l => l.status === 'Ativo').length, fill: 'var(--color-chart-3)' },
         { name: 'Atrasado', value: loans.filter(l => l.status === 'Atrasado').length, fill: 'hsl(var(--destructive))' },
         { name: 'Pago', value: loans.filter(l => l.status === 'Pago').length, fill: 'var(--color-chart-1)' },
-    ], []);
+    ], [loans]);
 
 
     return (

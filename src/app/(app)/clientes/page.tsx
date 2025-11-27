@@ -27,10 +27,10 @@ import {
   CircleDollarSign,
   TrendingUp,
 } from 'lucide-react';
-import { clients as initialClients, loans as initialLoans } from '@/lib/data';
 import type { Client, Loan, Payment } from '@/lib/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { useFinancialData } from '@/context/financial-context';
 
 function ClientCard({
   client,
@@ -231,9 +231,8 @@ function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[]
 }
 
 export default function ClientesPage() {
-  const [clients, setClients] = React.useState(initialClients);
-  const [loans, setLoans] = React.useState(initialLoans);
-  const [selectedClientId, setSelectedClientId] = React.useState<string | null>(initialClients[2]?.id || null);
+  const { clients, loans } = useFinancialData();
+  const [selectedClientId, setSelectedClientId] = React.useState<string | null>(clients[2]?.id || null);
   const [search, setSearch] = React.useState('');
 
   const handleSelectClient = (clientId: string) => {

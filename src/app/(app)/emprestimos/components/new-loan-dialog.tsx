@@ -39,8 +39,8 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
 import { add } from 'date-fns';
-import type { Loan } from '@/lib/types';
-import { accounts } from '@/lib/data';
+import type { Loan, Client } from '@/lib/types';
+import { useFinancialData } from '@/context/financial-context';
 
 type SimulatedInstallment = {
   number: number;
@@ -57,8 +57,8 @@ type SimulationResult = {
 };
 
 const formSchema = z.object({
-  client: z.string().min(1, 'Selecione um cliente.'),
-  account: z.string().min(1, 'Selecione uma conta.'),
+  clientId: z.string().min(1, 'Selecione um cliente.'),
+  accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
     .number()
@@ -70,33 +70,39 @@ const formSchema = z.object({
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Data de início inválida.',
   }),
-}).refine(data => {
-    if (!data.account || !data.amount) return true;
-    const selectedAccount = accounts.find(acc => acc.id === data.account);
-    if (!selectedAccount) return true;
-    return data.amount <= selectedAccount.balance;
-}, {
-    message: 'O valor do empréstimo não pode exceder o saldo da conta selecionada.',
-    path: ['amount'],
 });
+
+export type NewLoanFormValues = z.infer<typeof formSchema>;
 
 interface NewLoanDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   loanToEdit?: Loan | null;
+  onConfirm: (values: NewLoanFormValues, id?: string) => void;
 }
 
-export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialogProps) {
+export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: NewLoanDialogProps) {
   const { toast } = useToast();
+  const { accounts, clients } = useFinancialData();
   const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
 
   const isEditMode = !!loanToEdit;
+  
+  const refinedSchema = formSchema.refine(data => {
+      if (!data.accountId || !data.amount) return true;
+      const selectedAccount = accounts.find(acc => acc.id === data.accountId);
+      if (!selectedAccount) return true;
+      return data.amount <= selectedAccount.balance;
+  }, {
+      message: 'O valor do empréstimo não pode exceder o saldo da conta selecionada.',
+      path: ['amount'],
+  });
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof refinedSchema>>({
+    resolver: zodResolver(refinedSchema),
     defaultValues: {
-      client: '',
-      account: '',
+      clientId: '',
+      accountId: '',
       amount: 1000,
       installments: 12,
       interestRate: 1.99,
@@ -107,31 +113,32 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialo
   });
 
   React.useEffect(() => {
-    if (isEditMode && loanToEdit) {
-      form.reset({
-        client: loanToEdit.borrowerName, // Assuming the name is the identifier for now
-        amount: loanToEdit.amount,
-        installments: loanToEdit.installments.length,
-        interestRate: loanToEdit.interestRate,
-        startDate: loanToEdit.startDate,
-        // You might need to add account, iofRate, iofValue to your Loan type
-        // if you want to edit them.
-        account: '', // Placeholder
-        iofRate: '' as any, // Placeholder
-        iofValue: '' as any, // Placeholder
-      });
-      setSimulation(null); // Clear previous simulation on edit
-    } else {
-      form.reset({
-        client: '',
-        account: '',
-        amount: 1000,
-        installments: 12,
-        interestRate: 1.99,
-        startDate: new Date().toISOString().split('T')[0],
-        iofRate: '' as any,
-        iofValue: '' as any,
-      });
+    if (isOpen) {
+        if (isEditMode && loanToEdit) {
+            form.reset({
+                clientId: loanToEdit.clientId,
+                accountId: loanToEdit.accountId,
+                amount: loanToEdit.amount,
+                installments: loanToEdit.installments.length,
+                interestRate: loanToEdit.interestRate,
+                startDate: loanToEdit.startDate,
+                iofRate: loanToEdit.iofRate as any,
+                iofValue: loanToEdit.iofValue as any,
+            });
+            setSimulation(null);
+        } else {
+            form.reset({
+                clientId: '',
+                accountId: '',
+                amount: 1000,
+                installments: 12,
+                interestRate: 1.99,
+                startDate: new Date().toISOString().split('T')[0],
+                iofRate: '' as any,
+                iofValue: '' as any,
+            });
+            setSimulation(null);
+        }
     }
   }, [loanToEdit, isEditMode, form, isOpen]);
 
@@ -182,18 +189,16 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialo
     });
   }
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, you'd send this to your server/API
-    console.log({isEditMode, values});
+  function onSubmit(values: z.infer<typeof refinedSchema>) {
+    const client = clients.find(c => c.id === values.clientId);
+
+    onConfirm(values, loanToEdit?.id);
     
     toast({
       title: isEditMode ? 'Empréstimo Atualizado!' : 'Empréstimo Criado!',
-      description: `O empréstimo para ${values.client} foi ${isEditMode ? 'atualizado' : 'registrado'}.`,
+      description: `O empréstimo para ${client?.name} foi ${isEditMode ? 'atualizado' : 'registrado'}.`,
       className: 'bg-primary text-primary-foreground',
     });
-    
-    // This is where you would call a server action to create/update the loan
-    // e.g., await createOrUpdateLoanAction({ ...values, id: loanToEdit?.id });
     
     onOpenChange(false);
   }
@@ -217,7 +222,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialo
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="client"
+                name="clientId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cliente</FormLabel>
@@ -228,9 +233,9 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialo
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="João da Silva">João da Silva</SelectItem>
-                        <SelectItem value="Maria Oliveira">Maria Oliveira</SelectItem>
-                        <SelectItem value="Fernando Sena">Fernando Sena</SelectItem>
+                        {clients.map((client: Client) => (
+                           <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -239,7 +244,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialo
               />
               <FormField
                 control={form.control}
-                name="account"
+                name="accountId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Conta de Saída</FormLabel>

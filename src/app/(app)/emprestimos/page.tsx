@@ -1,10 +1,8 @@
-
 'use client';
 
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { loans as initialLoans } from '@/lib/data';
 import { PlusCircle, Edit, Trash2, Banknote, ChevronDown } from 'lucide-react';
 import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -31,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PaymentHistoryDialog } from './components/payment-history-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, List, AlertTriangle } from 'lucide-react';
+import { useFinancialData } from '@/context/financial-context';
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 type Installment = Loan['installments'][0];
@@ -124,10 +123,8 @@ const AmortizationPlan = ({
 
 
 export default function EmprestimosPage() {
-  const [loans, setLoans] = React.useState<Loan[]>(initialLoans);
+  const { loans, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
   const [activeFilter, setActiveFilter] = React.useState<LoanStatusFilter>('Todos');
-
-  // Unified state for dialogs
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
   const [editingLoan, setEditingLoan] = React.useState<Loan | null>(null);
   const [deletingLoanId, setDeletingLoanId] = React.useState<string | null>(null);
@@ -136,7 +133,6 @@ export default function EmprestimosPage() {
 
   const { toast } = useToast();
 
-  // --- Functions to open dialogs ---
   const handleOpenNewLoan = () => {
     setEditingLoan(null);
     setNewLoanOpen(true);
@@ -159,58 +155,29 @@ export default function EmprestimosPage() {
     setHistoryState({ loan, installment });
   };
 
-  // --- Logic functions ---
   const handleDeleteLoan = () => {
     if (!deletingLoanId) return;
     const loanToDelete = loans.find(l => l.id === deletingLoanId);
-    setLoans(prevLoans => prevLoans.filter(l => l.id !== deletingLoanId));
+    deleteLoan(deletingLoanId);
     toast({
       title: "Empréstimo Excluído",
       description: `O empréstimo para ${loanToDelete?.borrowerName} foi removido.`,
     });
     setDeletingLoanId(null);
   };
-
-  const handlePayment = (loanId: string, installmentNumber: number, paymentAmount: number, paymentDate: string, paymentMethod: string) => {
-    setLoans(prevLoans =>
-      prevLoans.map(loan => {
-        if (loan.id === loanId) {
-          const newPayments: Payment[] = [
-            ...loan.payments,
-            {
-              id: `PAG-${Date.now()}`,
-              loanId,
-              installmentNumber,
-              amount: paymentAmount,
-              paymentDate,
-              method: paymentMethod,
-            },
-          ];
-
-          const newInstallments = loan.installments.map(inst => {
-            if (inst.number === installmentNumber) {
-              const newPaidAmount = inst.paidAmount + paymentAmount;
-              return {
-                ...inst,
-                paidAmount: newPaidAmount,
-                status: newPaidAmount >= inst.amount ? 'Pago' : 'Parcialmente Pago',
-              };
-            }
-            return inst;
-          });
-
-          const allPaid = newInstallments.every(inst => inst.status === 'Pago');
-          const newLoanStatus = allPaid ? 'Quitado' : loan.status;
-
-          return { ...loan, installments: newInstallments, payments: newPayments, status: newLoanStatus };
-        }
-        return loan;
-      })
-    );
+  
+  const handlePayment = (
+    loanId: string,
+    installmentNumber: number,
+    paymentAmount: number,
+    paymentDate: string,
+    paymentMethod: string,
+    destinationAccountId: string,
+  ) => {
+    registerPayment(loanId, installmentNumber, paymentAmount, paymentDate, paymentMethod, destinationAccountId);
     setPaymentState(null); // Close dialog on success
   };
 
-  // --- Derived State and Data ---
   const filteredLoans = React.useMemo(() => {
     if (activeFilter === 'Todos') return loans;
     if (activeFilter === 'Parcialmente Pago') return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
@@ -227,7 +194,6 @@ export default function EmprestimosPage() {
   
   const loanToDelete = loans.find(l => l.id === deletingLoanId);
 
-  // --- Render ---
   return (
     <div className="text-white">
       <PageHeader
@@ -241,7 +207,6 @@ export default function EmprestimosPage() {
         }
       />
 
-      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -285,7 +250,6 @@ export default function EmprestimosPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <div className="mb-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
           {(['Todos', 'Ativo', 'Atrasado', 'Pendente', 'Quitado'] as LoanStatusFilter[]).map(filter => (
@@ -302,14 +266,12 @@ export default function EmprestimosPage() {
         </div>
       </div>
 
-      {/* Loan List */}
       <div>
         {filteredLoans.map(loan => {
           const totalInstallments = loan.installments.length;
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
           const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
           const totalAmount = loan.installments.reduce((acc, i) => acc + i.amount, 0);
-          const totalInterest = loan.installments.reduce((acc, i) => acc + i.interest, 0);
 
           const getStatusClasses = (status: Loan['status']) => {
             switch (status) {
@@ -379,11 +341,11 @@ export default function EmprestimosPage() {
         )}
       </div>
 
-      {/* Dialogs */}
       <NewLoanDialog
         isOpen={isNewLoanOpen}
         onOpenChange={setNewLoanOpen}
         loanToEdit={editingLoan}
+        onConfirm={editingLoan ? updateLoan : createLoan}
       />
 
       <DeleteAlertDialog
@@ -411,5 +373,3 @@ export default function EmprestimosPage() {
     </div>
   );
 }
-
-    

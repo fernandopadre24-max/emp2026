@@ -13,8 +13,11 @@ export type Loan = {
   id: string;
   borrowerName: string;
   clientId: string;
+  accountId: string; // ID of the account from which the loan amount was debited
   amount: number;
   interestRate: number;
+  iofRate?: number;
+  iofValue?: number;
   startDate: string;
   installments: {
     number: number;
@@ -36,6 +39,7 @@ export type Payment = {
   amount: number;
   paymentDate: string;
   method?: string; // e.g., 'PIX', 'Boleto'
+  destinationAccountId?: string; // ID of the account where the payment was credited
 };
 
 export type Transaction = {
@@ -45,6 +49,7 @@ export type Transaction = {
   amount: number;
   type: 'Receita' | 'Despesa';
   category: string;
+  referenceId?: string; // e.g., Loan ID or Payment ID
 }
 
 export type Account = {
