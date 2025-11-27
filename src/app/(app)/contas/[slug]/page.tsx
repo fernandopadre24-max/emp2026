@@ -5,15 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, cn } from '@/lib/utils';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { ArrowLeft, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
 
-export default function AccountStatementPage({ params }: { params: { slug: string } }) {
+export default function AccountStatementPage() {
+  const params = useParams();
+  const slug = params.slug as string;
+
   const { accounts } = useFinancialData();
-  const account = accounts.find(acc => acc.id === params.slug);
+  const account = accounts.find(acc => acc.id === slug);
 
   if (!account) {
     notFound();
