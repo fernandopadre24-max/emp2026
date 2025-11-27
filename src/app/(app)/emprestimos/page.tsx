@@ -5,7 +5,6 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { loans } from '@/lib/data';
 import { PlusCircle, Edit, Trash2, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
-import Link from 'next/link';
 import type { Loan } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
@@ -25,6 +24,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { PaymentDialog } from './components/payment-dialog';
+import { NewLoanDialog } from './components/new-loan-dialog';
 
 type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 
@@ -220,6 +220,7 @@ const LoanCard = ({ loan }: { loan: Loan }) => {
 
 export default function EmprestimosPage() {
   const [activeFilter, setActiveFilter] = React.useState<LoanStatus>('Todos');
+  const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
 
   const filteredLoans = React.useMemo(() => {
     if (activeFilter === 'Todos') {
@@ -244,11 +245,9 @@ export default function EmprestimosPage() {
         description="Gerencie todos os seus empréstimos aqui."
         action={
             <div className="flex items-center gap-4">
-                <Button asChild className="bg-blue-600 hover:bg-blue-500 text-white">
-                    <Link href="/emprestimos/novo">
+                <Button onClick={() => setNewLoanOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Novo Empréstimo
-                    </Link>
                 </Button>
                  <Button variant="outline" className="text-foreground">
                     + Nova Conta
@@ -262,6 +261,7 @@ export default function EmprestimosPage() {
       <div>
         {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} />)}
       </div>
+      <NewLoanDialog isOpen={isNewLoanOpen} onOpenChange={setNewLoanOpen} />
     </div>
   );
 }
