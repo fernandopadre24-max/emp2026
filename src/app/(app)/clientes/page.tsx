@@ -27,7 +27,7 @@ import {
   CircleDollarSign,
   TrendingUp,
 } from 'lucide-react';
-import { clients as initialClients, loans as allLoans } from '@/lib/data';
+import { clients as initialClients, loans as initialLoans } from '@/lib/data';
 import type { Client, Loan, Payment } from '@/lib/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -232,6 +232,7 @@ function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[]
 
 export default function ClientesPage() {
   const [clients, setClients] = React.useState(initialClients);
+  const [loans, setLoans] = React.useState(initialLoans);
   const [selectedClientId, setSelectedClientId] = React.useState<string | null>(initialClients[2]?.id || null);
   const [search, setSearch] = React.useState('');
 
@@ -280,7 +281,7 @@ export default function ClientesPage() {
         
         {/* Right Column */}
         <div className="h-[calc(100vh-100px)] overflow-y-auto pr-2">
-           <ClientDetails client={selectedClient || null} loans={allLoans} />
+           <ClientDetails client={selectedClient || null} loans={loans} />
         </div>
     </div>
   );
