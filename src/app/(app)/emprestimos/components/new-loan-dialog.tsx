@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
 import { add } from 'date-fns';
+import type { Loan } from '@/lib/types';
 
 type SimulatedInstallment = {
   number: number;
@@ -73,11 +74,14 @@ const formSchema = z.object({
 interface NewLoanDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  loanToEdit?: Loan | null;
 }
 
-export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
+export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialogProps) {
   const { toast } = useToast();
   const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
+
+  const isEditMode = !!loanToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -92,6 +96,36 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
       iofValue: '' as any,
     },
   });
+
+  React.useEffect(() => {
+    if (isEditMode && loanToEdit) {
+      form.reset({
+        client: loanToEdit.borrowerName, // Assuming the name is the identifier for now
+        amount: loanToEdit.amount,
+        installments: loanToEdit.installments.length,
+        interestRate: loanToEdit.interestRate,
+        startDate: loanToEdit.startDate,
+        // You might need to add account, iofRate, iofValue to your Loan type
+        // if you want to edit them.
+        account: '', // Placeholder
+        iofRate: '' as any, // Placeholder
+        iofValue: '' as any, // Placeholder
+      });
+      setSimulation(null); // Clear previous simulation on edit
+    } else {
+      form.reset({
+        client: '',
+        account: '',
+        amount: 1000,
+        installments: 12,
+        interestRate: 1.99,
+        startDate: new Date().toISOString().split('T')[0],
+        iofRate: '' as any,
+        iofValue: '' as any,
+      });
+    }
+  }, [loanToEdit, isEditMode, form, isOpen]);
+
 
   function handleSimulate() {
     const values = form.getValues();
@@ -140,28 +174,34 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
   }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    // In a real app, you'd send this to your server/API
+    console.log({isEditMode, values});
+    
     toast({
-      title: 'Sucesso!',
-      description: 'Novo empréstimo registrado.',
+      title: isEditMode ? 'Empréstimo Atualizado!' : 'Empréstimo Criado!',
+      description: `O empréstimo para ${values.client} foi ${isEditMode ? 'atualizado' : 'registrado'}.`,
       className: 'bg-primary text-primary-foreground',
     });
+    
+    // This is where you would call a server action to create/update the loan
+    // e.g., await createOrUpdateLoanAction({ ...values, id: loanToEdit?.id });
+    
     onOpenChange(false);
-    setSimulation(null);
-    form.reset();
+  }
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setSimulation(null);
+      form.reset();
+    }
+    onOpenChange(open);
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-        onOpenChange(open);
-        if (!open) {
-            setSimulation(null);
-            form.reset();
-        }
-    }}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-[700px] bg-card text-card-foreground border-border">
         <DialogHeader>
-          <DialogTitle>Novo Empréstimo</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Editar Empréstimo' : 'Novo Empréstimo'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
@@ -172,16 +212,16 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o cliente" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="joao-silva">João da Silva</SelectItem>
-                        <SelectItem value="maria-oliveira">Maria Oliveira</SelectItem>
-                        <SelectItem value="fernando-sena">Fernando Sena</SelectItem>
+                        <SelectItem value="João da Silva">João da Silva</SelectItem>
+                        <SelectItem value="Maria Oliveira">Maria Oliveira</SelectItem>
+                        <SelectItem value="Fernando Sena">Fernando Sena</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -194,7 +234,7 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Conta de Saída</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione a conta" />
@@ -363,7 +403,7 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
               <Button type="button" variant="secondary" onClick={handleSimulate}>
                 Simular Empréstimo
               </Button>
-              <Button type="submit">Criar Empréstimo</Button>
+              <Button type="submit">{isEditMode ? 'Salvar Alterações' : 'Criar Empréstimo'}</Button>
             </DialogFooter>
           </form>
         </Form>

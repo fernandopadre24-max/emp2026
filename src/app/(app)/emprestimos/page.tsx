@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { loans } from '@/lib/data';
+import { loans as initialLoans } from '@/lib/data';
 import { PlusCircle, Edit, Trash2, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Loan } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/accordion';
 import { PaymentDialog } from './components/payment-dialog';
 import { NewLoanDialog } from './components/new-loan-dialog';
+import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 
@@ -137,7 +139,7 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
 };
 
 
-const LoanCard = ({ loan }: { loan: Loan }) => {
+const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, onDelete: () => void }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [forceUpdate, setForceUpdate] = React.useState(0);
 
@@ -179,8 +181,8 @@ const LoanCard = ({ loan }: { loan: Loan }) => {
                         <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
                         <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
                         <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground"><Edit className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                     <div className="mt-2">
                         <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
@@ -219,24 +221,54 @@ const LoanCard = ({ loan }: { loan: Loan }) => {
 
 
 export default function EmprestimosPage() {
+  const [loans, setLoans] = React.useState<Loan[]>(initialLoans);
   const [activeFilter, setActiveFilter] = React.useState<LoanStatus>('Todos');
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
+  const [editingLoan, setEditingLoan] = React.useState<Loan | null>(null);
+  const [deletingLoan, setDeletingLoan] = React.useState<Loan | null>(null);
+  const { toast } = useToast();
+
+  const handleOpenNewLoan = () => {
+    setEditingLoan(null);
+    setNewLoanOpen(true);
+  }
+
+  const handleOpenEditLoan = (loan: Loan) => {
+    setEditingLoan(loan);
+    setNewLoanOpen(true);
+  }
+  
+  const handleOpenDeleteDialog = (loan: Loan) => {
+    setDeletingLoan(loan);
+  }
+  
+  const handleDeleteLoan = () => {
+    if (!deletingLoan) return;
+
+    // Simulate API call
+    setLoans(prevLoans => prevLoans.filter(l => l.id !== deletingLoan.id));
+
+    toast({
+      title: "Empréstimo Excluído",
+      description: `O empréstimo para ${deletingLoan.borrowerName} foi removido.`,
+    });
+    setDeletingLoan(null);
+  }
 
   const filteredLoans = React.useMemo(() => {
     if (activeFilter === 'Todos') {
       return loans;
     }
-    // This is a simple mapping. A real app might have more complex logic.
     const statusMap = {
         'Atrasado': 'Atrasado',
         'Quitado': 'Quitado',
-        'Parcialmente Pago': 'Ativo', // Example mapping
-        'Pendente': 'Pendente', // Example mapping
+        'Parcialmente Pago': 'Ativo',
+        'Pendente': 'Pendente',
     }
     const filterKey = statusMap[activeFilter as keyof typeof statusMap] || activeFilter;
     
     return loans.filter(loan => loan.status === filterKey);
-  }, [activeFilter]);
+  }, [activeFilter, loans]);
 
   return (
     <div className="text-white">
@@ -245,7 +277,7 @@ export default function EmprestimosPage() {
         description="Gerencie todos os seus empréstimos aqui."
         action={
             <div className="flex items-center gap-4">
-                <Button onClick={() => setNewLoanOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
+                <Button onClick={handleOpenNewLoan} className="bg-blue-600 hover:bg-blue-500 text-white">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Novo Empréstimo
                 </Button>
@@ -259,9 +291,22 @@ export default function EmprestimosPage() {
         <LoanStatusFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
       </div>
       <div>
-        {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} />)}
+        {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={() => handleOpenEditLoan(loan)} onDelete={() => handleOpenDeleteDialog(loan)} />)}
       </div>
-      <NewLoanDialog isOpen={isNewLoanOpen} onOpenChange={setNewLoanOpen} />
+
+      <NewLoanDialog 
+        isOpen={isNewLoanOpen} 
+        onOpenChange={setNewLoanOpen}
+        loanToEdit={editingLoan}
+      />
+
+      <DeleteAlertDialog
+        isOpen={!!deletingLoan}
+        onOpenChange={(isOpen) => !isOpen && setDeletingLoan(null)}
+        onConfirm={handleDeleteLoan}
+        title="Confirmar Exclusão"
+        description={`Tem certeza que deseja excluir o empréstimo para ${deletingLoan?.borrowerName}? Esta ação não pode ser desfeita.`}
+      />
     </div>
   );
 }
