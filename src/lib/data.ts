@@ -1,4 +1,5 @@
-import type { Loan } from '@/lib/types';
+import type { Loan, Account } from '@/lib/types';
+import { Library, Wallet } from 'lucide-react';
 
 export const loans: Loan[] = [
   {
@@ -96,3 +97,29 @@ export const loans: Loan[] = [
     payments: []
   },
 ];
+
+
+export const accounts: Account[] = [
+    {
+        id: 'investimentos',
+        name: 'Investimentos',
+        balance: 40000.00,
+        icon: Library,
+        transactions: [
+            { id: 'TR-001', date: '2024-07-01', description: 'Aplicação Tesouro Selic', amount: 5000, type: 'Despesa', category: 'Investimento' },
+            { id: 'TR-002', date: '2024-07-10', description: 'Dividendos FII XPTO', amount: 150.75, type: 'Receita', category: 'Dividendos' },
+            { id: 'TR-003', date: '2024-07-20', description: 'Resgate Fundo Multimercado', amount: 2000, type: 'Receita', category: 'Resgate' }
+        ]
+    },
+    {
+        id: 'nubank',
+        name: 'Nubank',
+        balance: 4128.10,
+        icon: Wallet,
+        transactions: [
+            { id: 'TR-004', date: '2024-07-05', description: 'Supermercado', amount: 250.40, type: 'Despesa', category: 'Alimentação' },
+            { id: 'TR-005', date: '2024-07-08', description: 'Salário', amount: 6000.00, type: 'Receita', category: 'Salário' },
+            { id: 'TR-006', date: '2024-07-15', description: 'Pagamento Fatura Cartão', amount: 1500.00, type: 'Despesa', category: 'Cartão de Crédito' }
+        ]
+    }
+]

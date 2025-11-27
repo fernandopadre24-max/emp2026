@@ -1,3 +1,5 @@
+import { LucideIcon } from "lucide-react";
+
 export type Loan = {
   id: string;
   borrowerName: string;
@@ -13,7 +15,7 @@ export type Loan = {
     paidAmount: number;
     status: 'Pendente' | 'Pago' | 'Parcialmente Pago' | 'Atrasado';
   }[];
-  status: 'Ativo' | 'Atrasado' | 'Pago' | 'Pendente';
+  status: 'Ativo' | 'Atrasado' | 'Pago' | 'Pendente' | 'Quitado';
   payments: Payment[]; // This can be deprecated or used for history
 };
 
@@ -23,3 +25,20 @@ export type Payment = {
   amount: number;
   paymentDate: string;
 };
+
+export type Transaction = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'Receita' | 'Despesa';
+  category: string;
+}
+
+export type Account = {
+  id: string;
+  name: string;
+  balance: number;
+  icon: LucideIcon;
+  transactions: Transaction[];
+}

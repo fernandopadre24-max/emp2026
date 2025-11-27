@@ -2,21 +2,10 @@
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Banknote, PlusCircle, ArrowUpRight, Library, Wallet, DollarSign } from 'lucide-react';
+import { Banknote, PlusCircle, ArrowUpRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-
-const accounts = [
-    {
-        name: 'Investimentos',
-        balance: 40000.00,
-        icon: Library,
-    },
-    {
-        name: 'Nubank',
-        balance: 4128.10,
-        icon: Wallet,
-    }
-]
+import { accounts } from '@/lib/data';
+import Link from 'next/link';
 
 const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
 
@@ -76,8 +65,10 @@ export default function ContasPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Button variant="outline" className="w-full">
-                        Ver Extrato <ArrowUpRight className="ml-2 h-4 w-4" />
+                    <Button variant="outline" className="w-full" asChild>
+                        <Link href={`/contas/${account.id}`}>
+                            Ver Extrato <ArrowUpRight className="ml-2 h-4 w-4" />
+                        </Link>
                     </Button>
                 </CardContent>
             </Card>
