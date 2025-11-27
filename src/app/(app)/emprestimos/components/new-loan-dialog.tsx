@@ -40,6 +40,7 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import { add } from 'date-fns';
 import type { Loan } from '@/lib/types';
+import { accounts } from '@/lib/data';
 
 type SimulatedInstallment = {
   number: number;
@@ -69,6 +70,14 @@ const formSchema = z.object({
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Data de início inválida.',
   }),
+}).refine(data => {
+    if (!data.account || !data.amount) return true;
+    const selectedAccount = accounts.find(acc => acc.id === data.account);
+    if (!selectedAccount) return true;
+    return data.amount <= selectedAccount.balance;
+}, {
+    message: 'O valor do empréstimo não pode exceder o saldo da conta selecionada.',
+    path: ['amount'],
 });
 
 interface NewLoanDialogProps {
@@ -241,8 +250,11 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit }: NewLoanDialo
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="investimentos">Investimentos (R$ 40.000,00)</SelectItem>
-                        <SelectItem value="nubank">Nubank (R$ 4.128,10)</SelectItem>
+                        {accounts.map(account => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name} ({formatCurrency(account.balance)})
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
