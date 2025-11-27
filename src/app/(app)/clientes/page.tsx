@@ -1,84 +1,253 @@
+'use client';
 
+import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { loans } from '@/lib/data';
-import { formatCurrency } from '@/lib/utils';
-import { User, DollarSign, List, ArrowUpRight } from 'lucide-react';
-import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Hash,
+  Phone,
+  MapPin,
+  Search,
+  PlusCircle,
+  Edit,
+  Trash2,
+  Download,
+  ArrowLeft,
+  CircleDollarSign,
+  TrendingUp,
+} from 'lucide-react';
+import { clients as initialClients, loans as allLoans } from '@/lib/data';
+import type { Client, Loan } from '@/lib/types';
+import { cn, formatCurrency } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
-type Client = {
-  name: string;
-  slug: string;
-  totalBorrowed: number;
-  activeLoans: number;
-  totalLoans: number;
-};
-
-function createSlug(name: string) {
-    return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+function ClientCard({
+  client,
+  onSelect,
+  isSelected,
+}: {
+  client: Client;
+  onSelect: () => void;
+  isSelected: boolean;
+}) {
+  return (
+    <Card
+      className={cn(
+        'cursor-pointer transition-all hover:bg-card-foreground/5',
+        isSelected && 'ring-2 ring-primary bg-card-foreground/10'
+      )}
+      onClick={onSelect}
+    >
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 p-3 rounded-full">
+              <client.avatar className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{client.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">ID: {client.id}</p>
+            </div>
+          </div>
+          <div className="flex gap-1">
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Edit className="h-4 w-4" /></Button>
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Hash className="h-4 w-4" />
+          <span>{client.cpf}</span>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Phone className="h-4 w-4" />
+          <span>{client.phone}</span>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <MapPin className="h-4 w-4" />
+          <span>{client.address}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
+function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[] }) {
+  if (!client) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground">
+        Selecione um cliente para ver os detalhes
+      </div>
+    );
+  }
 
-export default function ClientesPage() {
-  const clients = loans.reduce((acc, loan) => {
-    let client = acc.find(c => c.name === loan.borrowerName);
-    if (!client) {
-      client = {
-        name: loan.borrowerName,
-        slug: createSlug(loan.borrowerName),
-        totalBorrowed: 0,
-        activeLoans: 0,
-        totalLoans: 0,
-      };
-      acc.push(client);
-    }
-    client.totalBorrowed += loan.amount;
-    client.totalLoans += 1;
-    if (loan.status === 'Ativo' || loan.status === 'Atrasado') {
-      client.activeLoans += 1;
-    }
-    return acc;
-  }, [] as Client[]);
+  const clientLoans = loans.filter(loan => loan.clientId === client.id);
+  const totalBorrowed = clientLoans.reduce((acc, loan) => acc + loan.amount, 0);
+  const totalPaid = clientLoans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0);
+
+  const getStatusVariant = (status: Loan['status']): 'default' | 'secondary' | 'destructive' => {
+      switch (status) {
+        case 'Pago':
+        case 'Quitado':
+          return 'default'
+        case 'Atrasado':
+          return 'destructive';
+        case 'Ativo':
+        case 'Pendente':
+        default:
+          return 'secondary';
+      }
+    };
 
   return (
-    <>
-      <PageHeader
-        title="Clientes"
-        description="Visualize e gerencie seus clientes."
-        action={
-            <Button>
-                Novo Cliente
-            </Button>
-        }
-      />
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {clients.map(client => (
-          <Card key={client.name}>
+    <div className="space-y-6">
+        <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Detalhes do Cliente</h2>
+             <div className="flex items-center gap-2">
+                <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar CSV
+                </Button>
+                <Button variant="ghost">
+                     <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar para a Lista
+                </Button>
+            </div>
+        </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 p-3 rounded-full">
+              <client.avatar className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl">{client.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">ID: {client.id}</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <Hash className="h-4 w-4" />
+                <span>{client.cpf}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <Phone className="h-4 w-4" />
+                <span>{client.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>{client.address}</span>
+            </div>
+        </CardContent>
+      </Card>
+      
+      <div className="grid grid-cols-2 gap-6">
+        <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">{client.name}</CardTitle>
-                <User className="h-5 w-5 text-muted-foreground" />
-              </div>
+                <CardTitle className="text-base">Resumo Financeiro</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2"><DollarSign className="h-4 w-4"/> Total Emprestado</span>
-                <span className="font-semibold">{formatCurrency(client.totalBorrowed)}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2"><List className="h-4 w-4"/> Empréstimos</span>
-                <span className="font-semibold">{client.activeLoans} Ativos / {client.totalLoans} Total</span>
-              </div>
-                <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href={`/clientes/${client.slug}`}>
-                        Ver Detalhes <ArrowUpRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
+                <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground flex items-center gap-2"><CircleDollarSign className="h-5 w-5" /> Total Emprestado</span>
+                    <span className="font-bold text-lg text-red-400">{formatCurrency(totalBorrowed)}</span>
+                </div>
+                 <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Total Pago</span>
+                    <span className="font-bold text-lg text-green-400">{formatCurrency(totalPaid)}</span>
+                </div>
             </CardContent>
-          </Card>
-        ))}
+        </Card>
       </div>
-    </>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Empréstimos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {clientLoans.map(loan => (
+                    <div key={loan.id} className="flex items-center justify-between p-3 rounded-md bg-card-foreground/5">
+                        <div>
+                            <p className="font-semibold">{formatCurrency(loan.amount)}</p>
+                            <p className="text-xs text-muted-foreground">{loan.id} • Início: {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <Badge variant={getStatusVariant(loan.status)}>{loan.status}</Badge>
+                    </div>
+                ))}
+                {clientLoans.length === 0 && <p className="text-sm text-muted-foreground text-center">Nenhum empréstimo para este cliente.</p>}
+            </CardContent>
+        </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Pagamentos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-24 items-center justify-center rounded-lg border border-dashed">
+            <p className="text-center text-sm text-muted-foreground">Nenhum pagamento registrado para este cliente.</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function ClientesPage() {
+  const [clients, setClients] = React.useState(initialClients);
+  const [selectedClientId, setSelectedClientId] = React.useState<string | null>(initialClients[2]?.id || null);
+  const [search, setSearch] = React.useState('');
+
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+  };
+
+  const filteredClients = clients.filter(
+    (client) =>
+      client.name.toLowerCase().includes(search.toLowerCase()) ||
+      client.cpf.includes(search)
+  );
+  
+  const selectedClient = clients.find(c => c.id === selectedClientId);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[450px_1fr] gap-8 items-start">
+        {/* Left Column */}
+        <div className="space-y-4">
+             <div className="flex items-center gap-2">
+                <div className="relative w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Buscar por nome ou CPF..." 
+                        className="pl-9"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                <Button className="shrink-0">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Novo Cliente
+                </Button>
+            </div>
+            <div className="space-y-4 h-[calc(100vh-150px)] overflow-y-auto pr-2">
+                {filteredClients.map((client) => (
+                <ClientCard
+                    key={client.id}
+                    client={client}
+                    onSelect={() => handleSelectClient(client.id)}
+                    isSelected={selectedClientId === client.id}
+                />
+                ))}
+            </div>
+        </div>
+        
+        {/* Right Column */}
+        <div className="h-[calc(100vh-100px)] overflow-y-auto pr-2">
+           <ClientDetails client={selectedClient || null} loans={allLoans} />
+        </div>
+    </div>
   );
 }

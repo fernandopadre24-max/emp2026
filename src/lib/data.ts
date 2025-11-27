@@ -1,10 +1,39 @@
-import type { Loan, Account } from '@/lib/types';
-import { Library, Wallet } from 'lucide-react';
+import type { Loan, Account, Client } from '@/lib/types';
+import { Library, Wallet, User as UserIcon } from 'lucide-react';
+
+export const clients: Client[] = [
+  {
+    id: 'client-1',
+    name: 'João da Silva',
+    cpf: '123.456.789-00',
+    phone: '(11) 98765-4321',
+    address: 'Rua das Flores, 123, São Paulo, SP',
+    avatar: UserIcon
+  },
+  {
+    id: 'client-2',
+    name: 'Maria Oliveira',
+    cpf: '987.654.321-00',
+    phone: '(21) 91234-5678',
+    address: 'Avenida Copacabana, 456, Rio de Janeiro, RJ',
+    avatar: UserIcon
+  },
+    {
+    id: 'client-3',
+    name: 'Fernando Sena',
+    cpf: '367.904.865-34',
+    phone: '(71) 8118-4589',
+    address: 'Trv. Does Leoes 19 Pernambues',
+    avatar: UserIcon
+  },
+]
+
 
 export const loans: Loan[] = [
   {
     id: 'EMP-232570',
     borrowerName: 'João da Silva',
+    clientId: 'client-1',
     amount: 1500,
     interestRate: 10,
     startDate: '2025-11-08',
@@ -45,6 +74,7 @@ export const loans: Loan[] = [
   {
     id: 'EMP-761238',
     borrowerName: 'Maria Oliveira',
+    clientId: 'client-2',
     amount: 500,
     interestRate: 12,
     startDate: '2025-11-16',
@@ -63,6 +93,7 @@ export const loans: Loan[] = [
   {
     id: 'EMP-9368',
     borrowerName: 'Fernando Sena',
+    clientId: 'client-3',
     amount: 5000,
     interestRate: 8,
     startDate: '2025-11-17',
@@ -81,9 +112,29 @@ export const loans: Loan[] = [
     {
     id: 'EMP-6001',
     borrowerName: 'Fernando Sena',
+    clientId: 'client-3',
     amount: 5000,
     interestRate: 8,
     startDate: '2025-11-17',
+    status: 'Ativo',
+    installments: Array.from({ length: 12 }, (_, i) => ({
+      number: i + 1,
+      dueDate: new Date(2025, 11, 17 + i * 30).toISOString().split('T')[0],
+      amount: 458.33,
+      principal: 416.67,
+      interest: 41.66,
+      paidAmount: 0,
+      status: 'Pendente',
+    })),
+    payments: []
+  },
+   {
+    id: 'EMP-6147',
+    borrowerName: 'Fernando Sena',
+    clientId: 'client-3',
+    amount: 10000,
+    interestRate: 8,
+    startDate: '2025-12-11',
     status: 'Ativo',
     installments: Array.from({ length: 12 }, (_, i) => ({
       number: i + 1,

@@ -1,8 +1,18 @@
 import { LucideIcon } from "lucide-react";
 
+export type Client = {
+  id: string;
+  name: string;
+  cpf: string;
+  phone: string;
+  address: string;
+  avatar: LucideIcon;
+};
+
 export type Loan = {
   id: string;
   borrowerName: string;
+  clientId: string;
   amount: number;
   interestRate: number;
   startDate: string;
