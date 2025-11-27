@@ -63,6 +63,8 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
       installments: 12,
       interestRate: 1.99,
       startDate: new Date().toISOString().split('T')[0],
+      iofRate: '' as any, // Initialize as empty string
+      iofValue: '' as any, // Initialize as empty string
     },
   });
 
@@ -194,7 +196,7 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
                         <FormItem>
                             <FormLabel>Taxa de IOF (%) (Opcional)</FormLabel>
                             <FormControl>
-                            <Input type="number" step="0.01" placeholder="Ex: 0.38" {...field} />
+                            <Input type="number" step="0.01" placeholder="Ex: 0.38" {...field} value={field.value ?? ''} />
                             </FormControl>
                              <FormMessage />
                         </FormItem>
@@ -208,7 +210,7 @@ export function NewLoanDialog({ isOpen, onOpenChange }: NewLoanDialogProps) {
                             <FormLabel>Valor do IOF (R$)</FormLabel>
                             <FormControl>
                                 {/* This could be calculated or manual */}
-                                <Input type="number" step="0.01" placeholder="Calculado ou manual" {...field} />
+                                <Input type="number" step="0.01" placeholder="Calculado ou manual" {...field} value={field.value ?? ''} />
                             </FormControl>
                              <FormMessage />
                         </FormItem>
