@@ -158,6 +158,7 @@ const AmortizationPlan = ({ loan, onPaymentMade }: { loan: Loan, onPaymentMade: 
   );
 };
 
+
 const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdit: () => void, onDelete: () => void, onPaymentMade: (loanId: string, installmentNumber: number, amount: number, paymentDate: string, paymentMethod: string) => void }) => {
   const totalInstallments = loan.installments.length;
   const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
