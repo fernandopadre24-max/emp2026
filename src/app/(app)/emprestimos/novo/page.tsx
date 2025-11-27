@@ -22,8 +22,10 @@ const formSchema = z.object({
   borrowerName: z.string().min(2, {
     message: 'O nome do mutuário deve ter pelo menos 2 caracteres.',
   }),
+  cpf: z.string().min(11, { message: 'O CPF deve ter pelo menos 11 caracteres.' }),
   amount: z.coerce.number().positive({ message: 'O valor deve ser positivo.' }),
   interestRate: z.coerce.number().min(0, { message: 'A taxa de juros não pode ser negativa.' }),
+  installments: z.coerce.number().positive({ message: 'O número de parcelas deve ser positivo.'}),
   dueDate: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Data inválida."}),
 });
 
@@ -35,8 +37,10 @@ export default function NovoEmprestimoPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       borrowerName: '',
+      cpf: '',
       amount: 0,
       interestRate: 0,
+      installments: 1,
       dueDate: '',
     },
   });
@@ -59,20 +63,35 @@ export default function NovoEmprestimoPage() {
       <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="borrowerName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Mutuário</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: João Silva" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="borrowerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Mutuário</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: João Silva" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="000.000.000-00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
               <FormField
                 control={form.control}
                 name="amount"
@@ -94,6 +113,19 @@ export default function NovoEmprestimoPage() {
                     <FormLabel>Taxa de Juros (% a.a.)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.1" placeholder="Ex: 5.5" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="installments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número de Parcelas</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="1" placeholder="Ex: 12" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
