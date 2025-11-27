@@ -189,23 +189,21 @@ const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, 
     return () => clearInterval(interval);
   }, [isOpen])
 
-  const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
-
   return (
      <div className="bg-card border border-border rounded-lg mb-4">
        <Accordion type="single" collapsible onValueChange={(value) => setIsOpen(!!value)}>
          <AccordionItem value={loan.id} className="border-none">
-            <AccordionTrigger className="p-4 hover:no-underline data-[state=open]:bg-card-foreground/5 rounded-t-lg">
+            <div className="p-4 rounded-t-lg flex items-start justify-between data-[state=open]:bg-card-foreground/5">
                 <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
                     <div className="flex-1">
+                      <AccordionTrigger className="w-full p-0 hover:no-underline">
                         <div className="flex items-center gap-4 flex-wrap">
                             <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
+                        </div>
+                      </AccordionTrigger>
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
                             <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
                             <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
-                            <div onClick={stopPropagation} className="flex items-center">
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
-                            </div>
                         </div>
                         <div className="mt-2">
                             <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
@@ -229,11 +227,17 @@ const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, 
                             Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
                         </div>
                     </div>
-                    <div className="p-2 self-center">
-                      {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                    </div>
                 </div>
-            </AccordionTrigger>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
+                  </div>
+                  <AccordionTrigger className="p-2 hover:no-underline">
+                     {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  </AccordionTrigger>
+                </div>
+            </div>
           <AccordionContent className="p-4 pt-0">
             <AmortizationPlan loan={loan} />
           </AccordionContent>
@@ -285,6 +289,10 @@ export default function EmprestimosPage() {
     }
     if (activeFilter === 'Parcialmente Pago') {
         return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
+    }
+    // Adjust filter logic for 'Quitado' which might be 'Pago' in data
+    if (activeFilter === 'Quitado') {
+        return loans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
     }
     return loans.filter(loan => loan.status === activeFilter);
   }, [activeFilter, loans]);
@@ -396,7 +404,3 @@ export default function EmprestimosPage() {
     </div>
   );
 }
-
-    
-
-    
