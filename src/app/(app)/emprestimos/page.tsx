@@ -24,6 +24,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { PaymentDialog } from './components/payment-dialog';
 
 const LoanStatusFilters = () => {
     const [activeFilter, setActiveFilter] = React.useState('Todos');
@@ -52,21 +53,31 @@ const LoanStatusFilters = () => {
 }
 
 const AmortizationPlan = ({ loan }: { loan: Loan }) => {
-  const getStatusVariant = (status: (typeof loan.installments)[0]['status']) => {
-    switch (status) {
-      case 'Pago':
-        return 'bg-green-500/20 text-green-400';
-      case 'Parcialmente Pago':
-        return 'bg-yellow-500/20 text-yellow-400';
-      case 'Atrasado':
-        return 'bg-red-500/20 text-red-400';
-      case 'Pendente':
-      default:
-        return 'bg-gray-500/20 text-gray-400';
-    }
-  };
+    type Installment = Loan['installments'][0];
+    const [isPaymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
+    const [selectedInstallment, setSelectedInstallment] = React.useState<Installment | null>(null);
+
+    const handlePayClick = (installment: Installment) => {
+        setSelectedInstallment(installment);
+        setPaymentDialogOpen(true);
+    };
+
+    const getStatusVariant = (status: Installment['status']) => {
+        switch (status) {
+        case 'Pago':
+            return 'bg-green-500/20 text-green-400';
+        case 'Parcialmente Pago':
+            return 'bg-yellow-500/20 text-yellow-400';
+        case 'Atrasado':
+            return 'bg-red-500/20 text-red-400';
+        case 'Pendente':
+        default:
+            return 'bg-gray-500/20 text-gray-400';
+        }
+    };
 
   return (
+    <>
     <div className="bg-card-foreground/5 p-4 mt-2 rounded-lg">
       <h3 className="font-semibold text-lg mb-4 text-foreground">
         Plano de Amortização - {loan.borrowerName} ({loan.id})
@@ -99,7 +110,14 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button variant="link" className="text-blue-500 p-0 h-auto">Pagar</Button>
+                <Button 
+                    variant="link" 
+                    className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline" 
+                    onClick={() => handlePayClick(installment)}
+                    disabled={installment.status === 'Pago'}
+                >
+                    Pagar
+                </Button>
                 <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4">Histórico</Button>
               </TableCell>
             </TableRow>
@@ -107,12 +125,20 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
         </TableBody>
       </Table>
     </div>
+    <PaymentDialog 
+        isOpen={isPaymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        installment={selectedInstallment}
+        loan={loan}
+    />
+    </>
   );
 };
 
 
 const LoanCard = ({ loan }: { loan: Loan }) => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [forceUpdate, setForceUpdate] = React.useState(0);
 
   const totalInstallments = loan.installments.length;
   const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
@@ -133,6 +159,14 @@ const LoanCard = ({ loan }: { loan: Loan }) => {
         return 'border-blue-500/50 bg-blue-500/10 text-blue-400';
     }
   };
+
+  // Hack to force re-render when installment status changes inside the dialog
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+        if(isOpen) setForceUpdate(Date.now())
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isOpen])
 
   return (
      <div className="bg-card border border-border rounded-lg p-4 mb-4">
