@@ -57,25 +57,17 @@ const LoanStatusFilters = ({ activeFilter, setActiveFilter }: { activeFilter: Lo
             ))}
         </div>
     )
-}
+};
 
-const AmortizationPlan = ({ loan, onPaymentMade }: { loan: Loan, onPaymentMade: (loanId: string, installmentNumber: number, amount: number, paymentDate: string, paymentMethod: string) => void }) => {
-    const [isPaymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
-    const [isHistoryDialogOpen, setHistoryDialogOpen] = React.useState(false);
-    const [selectedInstallment, setSelectedInstallment] = React.useState<Installment | null>(null);
-
-    const handlePayClick = (e: React.MouseEvent, installment: Installment) => {
-        e.stopPropagation();
-        setSelectedInstallment(installment);
-        setPaymentDialogOpen(true);
-    };
-
-    const handleHistoryClick = (e: React.MouseEvent, installment: Installment) => {
-        e.stopPropagation();
-        setSelectedInstallment(installment);
-        setHistoryDialogOpen(true);
-    };
-
+const AmortizationPlan = ({ 
+  loan, 
+  onPayClick, 
+  onHistoryClick 
+}: { 
+  loan: Loan, 
+  onPayClick: (installment: Installment) => void,
+  onHistoryClick: (installment: Installment) => void,
+}) => {
     const getStatusVariant = (status: Installment['status']) => {
         switch (status) {
         case 'Pago':
@@ -91,10 +83,9 @@ const AmortizationPlan = ({ loan, onPaymentMade }: { loan: Loan, onPaymentMade: 
     };
 
   return (
-    <>
     <div className="bg-card-foreground/5 p-4 mt-2 rounded-lg">
       <h3 className="font-semibold text-lg mb-4 text-foreground">
-        Plano de Amortização - {loan.borrowerName} ({loan.id})
+        Plano de Amortização
       </h3>
       <div className="overflow-x-auto">
         <Table>
@@ -128,12 +119,12 @@ const AmortizationPlan = ({ loan, onPaymentMade }: { loan: Loan, onPaymentMade: 
                     <Button 
                         variant="link" 
                         className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline" 
-                        onClick={(e) => handlePayClick(e, installment)}
+                        onClick={(e) => { e.stopPropagation(); onPayClick(installment); }}
                         disabled={installment.status === 'Pago'}
                     >
                         Pagar
                     </Button>
-                    <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4" onClick={(e) => handleHistoryClick(e, installment)}>Histórico</Button>
+                    <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4" onClick={(e) => { e.stopPropagation(); onHistoryClick(installment);}}>Histórico</Button>
                 </TableCell>
                 </TableRow>
             ))}
@@ -141,25 +132,22 @@ const AmortizationPlan = ({ loan, onPaymentMade }: { loan: Loan, onPaymentMade: 
         </Table>
       </div>
     </div>
-    <PaymentDialog 
-        isOpen={isPaymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        installment={selectedInstallment}
-        loan={loan}
-        onPaymentSuccess={onPaymentMade}
-    />
-    <PaymentHistoryDialog
-        isOpen={isHistoryDialogOpen}
-        onOpenChange={setHistoryDialogOpen}
-        installment={selectedInstallment}
-        loan={loan}
-    />
-    </>
   );
 };
 
-
-const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdit: () => void, onDelete: () => void, onPaymentMade: (loanId: string, installmentNumber: number, amount: number, paymentDate: string, paymentMethod: string) => void }) => {
+const LoanCard = ({ 
+  loan, 
+  onEdit, 
+  onDelete, 
+  onPayClick,
+  onHistoryClick
+}: { 
+  loan: Loan, 
+  onEdit: () => void, 
+  onDelete: () => void,
+  onPayClick: (installment: Installment) => void,
+  onHistoryClick: (installment: Installment) => void,
+}) => {
   const totalInstallments = loan.installments.length;
   const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
   const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
@@ -184,89 +172,100 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
     <Accordion type="single" collapsible className="bg-card border border-border rounded-lg mb-4">
       <AccordionItem value={loan.id} className="border-none">
         <div className="flex w-full p-4 items-start justify-between">
-          <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
-             <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start cursor-pointer">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap mt-2">
-                    <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
-                    <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
-                    <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> |
-                      Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
-                    </p>
-                  </div>
+            <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
+                 <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap mt-2">
+                        <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
+                        <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
+                        <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> |
+                          Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-full md:w-64 flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                        <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
+                        <Progress value={progress} className="h-2 mt-1 bg-white/10" />
+                      </div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
+                      </div>
+                    </div>
                 </div>
-                <div className="w-full md:w-64 flex-shrink-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                    <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
-                    <Progress value={progress} className="h-2 mt-1 bg-white/10" />
-                  </div>
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
-                  </div>
-                </div>
+            </AccordionTrigger>
+            <div className="flex flex-col items-center justify-start gap-1 pl-4">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
+                <AccordionTrigger className="p-0 [&>svg]:mx-auto"><ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200" /></AccordionTrigger>
             </div>
-          </AccordionTrigger>
-          <div className="flex flex-col items-center justify-start gap-1 pl-4">
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
-            <AccordionTrigger className="p-0 [&>svg]:mx-auto"><ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200" /></AccordionTrigger>
-          </div>
         </div>
         <AccordionContent className="p-4 pt-0">
-          <AmortizationPlan loan={loan} onPaymentMade={onPaymentMade} />
+          <AmortizationPlan loan={loan} onPayClick={onPayClick} onHistoryClick={onHistoryClick} />
         </AccordionContent>
       </AccordionItem>
     </Accordion>
   );
 };
 
-
 export default function EmprestimosPage() {
   const [loans, setLoans] = React.useState<Loan[]>(initialLoans);
   const [activeFilter, setActiveFilter] = React.useState<LoanStatus>('Todos');
+  
+  // State for dialogs
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
   const [editingLoan, setEditingLoan] = React.useState<Loan | null>(null);
   const [deletingLoan, setDeletingLoan] = React.useState<Loan | null>(null);
+  
+  // State for payment and history dialogs
+  const [paymentState, setPaymentState] = React.useState<{isOpen: boolean, loan: Loan | null, installment: Installment | null}>({isOpen: false, loan: null, installment: null});
+  const [historyState, setHistoryState] = React.useState<{isOpen: boolean, loan: Loan | null, installment: Installment | null}>({isOpen: false, loan: null, installment: null});
+
   const { toast } = useToast();
 
   const handleOpenNewLoan = () => {
     setEditingLoan(null);
     setNewLoanOpen(true);
-  }
+  };
 
   const handleOpenEditLoan = (loan: Loan) => {
     setEditingLoan(loan);
     setNewLoanOpen(true);
-  }
+  };
   
   const handleOpenDeleteDialog = (loan: Loan) => {
     setDeletingLoan(loan);
-  }
+  };
   
   const handleDeleteLoan = () => {
     if (!deletingLoan) return;
-
-    // Simulate API call
     setLoans(prevLoans => prevLoans.filter(l => l.id !== deletingLoan.id));
-
     toast({
       title: "Empréstimo Excluído",
       description: `O empréstimo para ${deletingLoan.borrowerName} foi removido.`,
     });
     setDeletingLoan(null);
-  }
+  };
+
+  const handleOpenPaymentDialog = (loan: Loan, installment: Installment) => {
+    setPaymentState({ isOpen: true, loan, installment });
+  };
+
+  const handleOpenHistoryDialog = (loan: Loan, installment: Installment) => {
+    setHistoryState({ isOpen: true, loan, installment });
+  };
   
   const handlePayment = (loanId: string, installmentNumber: number, paymentAmount: number, paymentDate: string, paymentMethod: string) => {
     setLoans(prevLoans => {
@@ -309,18 +308,10 @@ export default function EmprestimosPage() {
     });
   };
 
-
   const filteredLoans = React.useMemo(() => {
-    if (activeFilter === 'Todos') {
-      return loans;
-    }
-    if (activeFilter === 'Parcialmente Pago') {
-        return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
-    }
-    // Adjust filter logic for 'Quitado' which might be 'Pago' in data
-    if (activeFilter === 'Quitado') {
-        return loans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
-    }
+    if (activeFilter === 'Todos') return loans;
+    if (activeFilter === 'Parcialmente Pago') return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
+    if (activeFilter === 'Quitado') return loans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
     return loans.filter(loan => loan.status === activeFilter);
   }, [activeFilter, loans]);
 
@@ -350,30 +341,22 @@ export default function EmprestimosPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                Total Emprestado
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total Emprestado</CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(summary.totalEmprestado)}</div>
-                <p className="text-xs text-muted-foreground">
-                Valor total de todos os empréstimos
-                </p>
+                <p className="text-xs text-muted-foreground">Valor total de todos os empréstimos</p>
             </CardContent>
             </Card>
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                Total Recebido
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-green-500">{formatCurrency(summary.totalRecebido)}</div>
-                <p className="text-xs text-muted-foreground">
-                Soma de todos os pagamentos
-                </p>
+                <p className="text-xs text-muted-foreground">Soma de todos os pagamentos</p>
             </CardContent>
             </Card>
             <Card>
@@ -383,9 +366,7 @@ export default function EmprestimosPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">+{summary.emprestimosAtivos}</div>
-                <p className="text-xs text-muted-foreground">
-                Empréstimos aguardando quitação
-                </p>
+                <p className="text-xs text-muted-foreground">Empréstimos aguardando quitação</p>
             </CardContent>
             </Card>
             <Card>
@@ -395,19 +376,26 @@ export default function EmprestimosPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-red-500">+{summary.emprestimosAtrasados}</div>
-                <p className="text-xs text-muted-foreground">
-                Empréstimos com pagamentos atrasados
-                </p>
+                <p className="text-xs text-muted-foreground">Empréstimos com pagamentos atrasados</p>
             </CardContent>
             </Card>
         </div>
 
-
       <div className="mb-4">
         <LoanStatusFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
       </div>
+
       <div>
-        {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={() => handleOpenEditLoan(loan)} onDelete={() => handleOpenDeleteDialog(loan)} onPaymentMade={handlePayment} />)}
+        {filteredLoans.map(loan => (
+          <LoanCard 
+            key={loan.id} 
+            loan={loan} 
+            onEdit={() => handleOpenEditLoan(loan)} 
+            onDelete={() => handleOpenDeleteDialog(loan)}
+            onPayClick={(installment) => handleOpenPaymentDialog(loan, installment)}
+            onHistoryClick={(installment) => handleOpenHistoryDialog(loan, installment)}
+          />
+        ))}
         {filteredLoans.length === 0 && (
             <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-center">
                 <p className="text-muted-foreground">Nenhum empréstimo encontrado para o filtro "{activeFilter}".</p>
@@ -427,6 +415,21 @@ export default function EmprestimosPage() {
         onConfirm={handleDeleteLoan}
         title="Confirmar Exclusão"
         description={`Tem certeza que deseja excluir o empréstimo para ${deletingLoan?.borrowerName}? Esta ação não pode ser desfeita.`}
+      />
+      
+      <PaymentDialog
+        isOpen={paymentState.isOpen}
+        onOpenChange={(isOpen) => setPaymentState(prev => ({...prev, isOpen}))}
+        loan={paymentState.loan}
+        installment={paymentState.installment}
+        onPaymentSuccess={handlePayment}
+      />
+
+      <PaymentHistoryDialog
+        isOpen={historyState.isOpen}
+        onOpenChange={(isOpen) => setHistoryState(prev => ({...prev, isOpen}))}
+        loan={historyState.loan}
+        installment={historyState.installment}
       />
     </div>
   );
