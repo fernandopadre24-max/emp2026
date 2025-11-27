@@ -182,62 +182,60 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
   };
 
   return (
-     <div className="bg-card border border-border rounded-lg mb-4">
-       <Accordion type="single" collapsible onValueChange={(value) => setIsOpen(!!value)}>
-         <AccordionItem value={loan.id} className="border-none">
-            <div className="flex w-full p-4 hover:no-underline rounded-t-lg data-[state=open]:bg-card-foreground/5 items-start justify-between">
-                <AccordionTrigger className="flex-1 font-medium transition-all w-full text-left">
-                    <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-4 flex-wrap">
-                                <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap mt-2">
-                                <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
-                                <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
-                                <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> | 
-                                    Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="w-full md:w-64 flex-shrink-0">
-                            <div className="flex items-center justify-between">
-                               <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                               <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
-                                <Progress value={progress} className="h-2 mt-1 bg-white/10" />
-                            </div>
-                             <div className="mt-2 text-sm text-muted-foreground">
-                                Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
-                            </div>
-                        </div>
+    <div className="bg-card border border-border rounded-lg mb-4">
+      <Accordion type="single" collapsible onValueChange={(value) => setIsOpen(!!value)} value={isOpen ? loan.id : ''}>
+        <AccordionItem value={loan.id} className="border-none">
+          <div className="flex w-full p-4 items-start justify-between data-[state=open]:bg-card-foreground/5 rounded-t-lg">
+            <AccordionTrigger className="flex-1 p-0 hover:no-underline">
+              <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
+                <div className="flex-1">
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
                     </div>
-                </AccordionTrigger>
-                <div className="flex flex-col items-center gap-2 pl-4">
-                  <div className="flex items-center">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                   {/* This is a visual indicator for the trigger, it's not a button itself */}
-                   <AccordionTrigger asChild>
-                    <div className="p-1">
-                        {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    <div className="flex items-center gap-2 flex-wrap mt-2">
+                        <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
+                        <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
                     </div>
-                   </AccordionTrigger>
+                    <div className="mt-2">
+                        <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
+                        <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> | 
+                            Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
+                        </p>
+                    </div>
                 </div>
+                <div className="w-full md:w-64 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                        <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
+                    </div>
+                    <div className="mt-2">
+                        <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
+                        <Progress value={progress} className="h-2 mt-1 bg-white/10" />
+                    </div>
+                        <div className="mt-2 text-sm text-muted-foreground">
+                        Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
+                    </div>
+                </div>
+              </div>
+            </AccordionTrigger>
+
+            <div className="flex flex-col items-center gap-2 pl-4">
+              <div className="flex items-center">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+              <button onClick={() => setIsOpen(!isOpen)} className="p-1">
+                  {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
             </div>
+          </div>
           <AccordionContent className="p-4 pt-0">
             <AmortizationPlan loan={loan} onPaymentMade={onPaymentMade} />
           </AccordionContent>
-         </AccordionItem>
-       </Accordion>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 };
@@ -441,5 +439,3 @@ export default function EmprestimosPage() {
     </div>
   );
 }
-
-    
