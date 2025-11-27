@@ -53,9 +53,9 @@ export function PaymentDialog({
     }
   }, [installment]);
 
-  if (!installment || !loan) return null;
-  
   const handlePayment = () => {
+    if (!loan || !installment) return;
+
     // In a real app, this would be a server action
     console.log({
       loanId: loan.id,
@@ -84,6 +84,8 @@ export function PaymentDialog({
 
     onOpenChange(false);
   };
+  
+  if (!installment || !loan) return null;
 
   const remainingAmount = installment.amount - installment.paidAmount;
 
