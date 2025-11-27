@@ -172,7 +172,8 @@ const LoanCard = ({
     <Accordion type="single" collapsible className="bg-card border border-border rounded-lg mb-4">
       <AccordionItem value={loan.id} className="border-none">
         <div className="flex w-full p-4 items-start justify-between">
-            <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
+          <div className="flex-1">
+             <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
                 <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 flex-wrap">
@@ -206,6 +207,7 @@ const LoanCard = ({
                   </div>
                 </div>
             </AccordionTrigger>
+          </div>
             <div className="flex flex-col items-center justify-start gap-1 pl-4">
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
