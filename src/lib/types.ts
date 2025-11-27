@@ -32,6 +32,7 @@ export type Loan = {
 export type Payment = {
   id: string;
   loanId: string;
+  installmentNumber?: number; // Optional: To link payment to a specific installment
   amount: number;
   paymentDate: string;
 };

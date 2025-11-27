@@ -27,6 +27,7 @@ import { PaymentDialog } from './components/payment-dialog';
 import { NewLoanDialog } from './components/new-loan-dialog';
 import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { PaymentHistoryDialog } from './components/payment-history-dialog';
 
 type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 
@@ -58,11 +59,17 @@ const LoanStatusFilters = ({ activeFilter, setActiveFilter }: { activeFilter: Lo
 const AmortizationPlan = ({ loan }: { loan: Loan }) => {
     type Installment = Loan['installments'][0];
     const [isPaymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
+    const [isHistoryDialogOpen, setHistoryDialogOpen] = React.useState(false);
     const [selectedInstallment, setSelectedInstallment] = React.useState<Installment | null>(null);
 
     const handlePayClick = (installment: Installment) => {
         setSelectedInstallment(installment);
         setPaymentDialogOpen(true);
+    };
+
+    const handleHistoryClick = (installment: Installment) => {
+        setSelectedInstallment(installment);
+        setHistoryDialogOpen(true);
     };
 
     const getStatusVariant = (status: Installment['status']) => {
@@ -121,7 +128,7 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
                 >
                     Pagar
                 </Button>
-                <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4">Histórico</Button>
+                <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4" onClick={() => handleHistoryClick(installment)}>Histórico</Button>
               </TableCell>
             </TableRow>
           ))}
@@ -131,6 +138,12 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
     <PaymentDialog 
         isOpen={isPaymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
+        installment={selectedInstallment}
+        loan={loan}
+    />
+    <PaymentHistoryDialog
+        isOpen={isHistoryDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
         installment={selectedInstallment}
         loan={loan}
     />
