@@ -183,40 +183,40 @@ const LoanCard = ({ loan, onEdit, onDelete, onPaymentMade }: { loan: Loan, onEdi
     <Accordion type="single" collapsible className="bg-card border border-border rounded-lg mb-4">
       <AccordionItem value={loan.id} className="border-none">
         <div className="flex w-full p-4 items-start justify-between">
-            <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
-                <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start cursor-pointer">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap mt-2">
-                          <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
-                          <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
-                        </div>
-                        <div className="mt-2">
-                          <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
-                          <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> |
-                            Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="w-full md:w-64 flex-shrink-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                          <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
-                        </div>
-                        <div className="mt-2">
-                          <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
-                          <Progress value={progress} className="h-2 mt-1 bg-white/10" />
-                        </div>
-                        <div className="mt-2 text-sm text-muted-foreground">
-                          Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
-                        </div>
-                      </div>
+          <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
+             <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start cursor-pointer">
+                <div className="flex-1">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap mt-2">
+                    <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
+                    <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
+                    <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> |
+                      Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
+                    </p>
+                  </div>
                 </div>
-            </AccordionTrigger>
+                <div className="w-full md:w-64 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                    <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
+                    <Progress value={progress} className="h-2 mt-1 bg-white/10" />
+                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Último Pgto: <span className="text-foreground">PIX</span> em {loan.payments.length > 0 ? new Date(loan.payments[loan.payments.length - 1].paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
+                  </div>
+                </div>
+            </div>
+          </AccordionTrigger>
           <div className="flex flex-col items-center justify-start gap-1 pl-4">
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onEdit}><Edit className="w-4 h-4" /></Button>
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
@@ -430,5 +430,3 @@ export default function EmprestimosPage() {
     </div>
   );
 }
-
-    
