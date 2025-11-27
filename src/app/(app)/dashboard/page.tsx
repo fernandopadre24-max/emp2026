@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/page-header';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -22,29 +23,164 @@ import { ArrowUpRight, DollarSign, List, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useFinancialData } from '@/context/financial-context';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  Pie,
+  PieChart,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+} from 'recharts';
 
 export default function DashboardPage() {
   const { loans } = useFinancialData();
   const totalEmprestado = loans.reduce((acc, loan) => acc + loan.amount, 0);
-  const totalRecebido = loans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0);
-  const emprestimosAtivos = loans.filter(l => l.status === 'Ativo').length;
-  const emprestimosAtrasados = loans.filter(l => l.status === 'Atrasado').length;
+  const totalRecebido = loans
+    .flatMap((l) => l.payments)
+    .reduce((acc, p) => acc + p.amount, 0);
+  const emprestimosAtivos = loans.filter((l) => l.status === 'Ativo').length;
+  const emprestimosAtrasados = loans.filter(
+    (l) => l.status === 'Atrasado'
+  ).length;
 
-  const recentLoans = [...loans].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).slice(0, 5);
+  const recentLoans = [...loans]
+    .sort(
+      (a, b) =>
+        new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    )
+    .slice(0, 5);
 
-   const getStatusVariant = (status: 'Ativo' | 'Atrasado' | 'Pago' | 'Pendente' | 'Quitado' | undefined): 'default' | 'secondary' | 'destructive' => {
-      switch (status) {
-        case 'Pago':
-        case 'Quitado':
-          return 'default'
-        case 'Atrasado':
-          return 'destructive';
-        case 'Ativo':
-        case 'Pendente':
-        default:
-          return 'secondary';
-      }
-    };
+  const getStatusVariant = (
+    status: 'Ativo' | 'Atrasado' | 'Pago' | 'Pendente' | 'Quitado' | undefined
+  ): 'default' | 'secondary' | 'destructive' => {
+    switch (status) {
+      case 'Pago':
+      case 'Quitado':
+        return 'default';
+      case 'Atrasado':
+        return 'destructive';
+      case 'Ativo':
+      case 'Pendente':
+      default:
+        return 'secondary';
+    }
+  };
+
+  const statusData = React.useMemo(
+    () => [
+      {
+        name: 'Ativo',
+        value: loans.filter((l) => l.status === 'Ativo').length,
+        fill: 'var(--color-chart-2)',
+      },
+      {
+        name: 'Atrasado',
+        value: loans.filter((l) => l.status === 'Atrasado').length,
+        fill: 'var(--color-chart-5)',
+      },
+      {
+        name: 'Quitado',
+        value: loans.filter(
+          (l) => l.status === 'Quitado' || l.status === 'Pago'
+        ).length,
+        fill: 'var(--color-chart-1)',
+      },
+    ],
+    [loans]
+  );
+
+  const monthlyPaymentsData = React.useMemo(() => {
+    const monthlyPayments = loans
+      .flatMap((l) => l.payments)
+      .reduce((acc, payment) => {
+        const month = new Date(
+          payment.paymentDate + 'T00:00:00'
+        ).toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+        acc[month] = (acc[month] || 0) + payment.amount;
+        return acc;
+      }, {} as Record<string, number>);
+
+    const dateMap = new Map(
+      Object.entries(monthlyPayments).map(([key, value]) => {
+        const [monthStr, yearStr] = key.split(' de ');
+        const monthIndex = [
+          'jan',
+          'fev',
+          'mar',
+          'abr',
+          'mai',
+          'jun',
+          'jul',
+          'ago',
+          'set',
+          'out',
+          'nov',
+          'dez',
+        ].indexOf(monthStr);
+        return [
+          new Date(parseInt('20' + yearStr), monthIndex),
+          { month: key, total: value },
+        ];
+      })
+    );
+
+    const sortedDates = Array.from(dateMap.keys()).sort(
+      (a, b) => a.getTime() - b.getTime()
+    );
+
+    return sortedDates.map((date) => dateMap.get(date)!);
+  }, [loans]);
+
+  const newLoansData = React.useMemo(() => {
+    const monthlyNewLoans = loans.reduce((acc, loan) => {
+      const month = new Date(loan.startDate + 'T00:00:00').toLocaleString(
+        'pt-BR',
+        { month: 'short', year: '2-digit' }
+      );
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+     const dateMap = new Map(
+      Object.entries(monthlyNewLoans).map(([key, value]) => {
+        const [monthStr, yearStr] = key.split(' de ');
+        const monthIndex = [
+          'jan',
+          'fev',
+          'mar',
+          'abr',
+          'mai',
+          'jun',
+          'jul',
+          'ago',
+          'set',
+          'out',
+          'nov',
+          'dez',
+        ].indexOf(monthStr);
+        return [
+          new Date(parseInt('20' + yearStr), monthIndex),
+          { month: key, count: value },
+        ];
+      })
+    );
+
+    const sortedDates = Array.from(dateMap.keys()).sort(
+      (a, b) => a.getTime() - b.getTime()
+    );
+
+    return sortedDates.map((date) => dateMap.get(date)!);
+  }, [loans]);
 
   return (
     <>
@@ -61,7 +197,9 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalEmprestado)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(totalEmprestado)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Valor total de todos os empréstimos
             </p>
@@ -75,7 +213,9 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRecebido)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(totalRecebido)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Soma de todos os pagamentos
             </p>
@@ -83,7 +223,9 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Empréstimos Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Empréstimos Ativos
+            </CardTitle>
             <List className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -95,7 +237,9 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alertas de Pagamento</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Alertas de Pagamento
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -106,8 +250,131 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="mt-6">
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Recebimentos Mensais</CardTitle>
+            <CardDescription>
+              Total de pagamentos recebidos por mês.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={{}} className="h-[250px] w-full">
+              <BarChart data={monthlyPaymentsData} accessibilityLayer>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                  tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => formatCurrency(Number(value))}
+                      indicator="dot"
+                    />
+                  }
+                />
+                <Bar
+                  dataKey="total"
+                  fill="hsl(var(--primary))"
+                  radius={4}
+                  name="Total Recebido"
+                />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
         <Card>
+          <CardHeader>
+            <CardTitle>Distribuição por Status</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center">
+            <ChartContainer config={{}} className="h-[250px] w-full">
+              <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Pie
+                  data={statusData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={50}
+                  strokeWidth={5}
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Legend
+                  content={({ payload }) => {
+                    return (
+                      <ul className="flex flex-wrap gap-x-4 gap-y-1 justify-center text-sm text-muted-foreground">
+                        {payload?.map((entry, index) => (
+                          <li key={`item-${index}`} className="flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: entry.color }}
+                            />
+                            {entry.value}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }}
+                />
+              </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Novos Empréstimos</CardTitle>
+            <CardDescription>
+              Volume de novos empréstimos concedidos por mês.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={{}} className="h-[250px] w-full">
+              <LineChart data={newLoansData} accessibilityLayer>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                  tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      indicator="dot"
+                       formatter={(value) => `${value} empréstimos`}
+                    />
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Novos Empréstimos"
+                />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-1">
           <CardHeader className="flex flex-row items-center">
             <div className="grid gap-2">
               <CardTitle>Empréstimos Recentes</CardTitle>
@@ -124,9 +391,7 @@ export default function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Mutuário</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Valor</TableHead>
-                  <TableHead className="text-right">Data</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -134,14 +399,11 @@ export default function DashboardPage() {
                   <TableRow key={loan.id}>
                     <TableCell>
                       <div className="font-medium">{loan.borrowerName}</div>
+                       <div className="text-xs text-muted-foreground">{new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant={getStatusVariant(loan.status)}>
-                        {loan.status}
-                      </Badge>
+                    <TableCell className="text-right">
+                      {formatCurrency(loan.amount)}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{formatCurrency(loan.amount)}</TableCell>
-                    <TableCell className="text-right">{new Date(loan.startDate).toLocaleDateString('pt-BR')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
