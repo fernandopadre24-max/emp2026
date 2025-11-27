@@ -4,7 +4,7 @@ import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { loans as initialLoans } from '@/lib/data';
-import { PlusCircle, Edit, Trash2, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Banknote, ChevronDown, ChevronUp, DollarSign, List, AlertTriangle } from 'lucide-react';
 import type { Loan } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
@@ -28,6 +28,7 @@ import { NewLoanDialog } from './components/new-loan-dialog';
 import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentHistoryDialog } from './components/payment-history-dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 
@@ -275,13 +276,25 @@ export default function EmprestimosPage() {
     const statusMap = {
         'Atrasado': 'Atrasado',
         'Quitado': 'Quitado',
-        'Parcialmente Pago': 'Ativo',
+        'Parcialmente Pago': 'Ativo', // Example mapping
         'Pendente': 'Pendente',
     }
     const filterKey = statusMap[activeFilter as keyof typeof statusMap] || activeFilter;
     
+    if (activeFilter === 'Parcialmente Pago') {
+        return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
+    }
+    
     return loans.filter(loan => loan.status === filterKey);
   }, [activeFilter, loans]);
+
+  const summary = React.useMemo(() => {
+    const totalEmprestado = loans.reduce((acc, loan) => acc + loan.amount, 0);
+    const totalRecebido = loans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0);
+    const emprestimosAtivos = loans.filter(l => l.status === 'Ativo').length;
+    const emprestimosAtrasados = loans.filter(l => l.status === 'Atrasado').length;
+    return { totalEmprestado, totalRecebido, emprestimosAtivos, emprestimosAtrasados };
+  }, [loans]);
 
   return (
     <div className="text-white">
@@ -294,17 +307,76 @@ export default function EmprestimosPage() {
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Novo Empréstimo
                 </Button>
-                 <Button variant="outline" className="text-foreground">
-                    + Nova Conta
-                </Button>
             </div>
         }
       />
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                Total Emprestado
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(summary.totalEmprestado)}</div>
+                <p className="text-xs text-muted-foreground">
+                Valor total de todos os empréstimos
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                Total Recebido
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-green-500">{formatCurrency(summary.totalRecebido)}</div>
+                <p className="text-xs text-muted-foreground">
+                Soma de todos os pagamentos
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Empréstimos Ativos</CardTitle>
+                <List className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">+{summary.emprestimosAtivos}</div>
+                <p className="text-xs text-muted-foreground">
+                Empréstimos aguardando quitação
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Alertas de Pagamento</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold text-red-500">+{summary.emprestimosAtrasados}</div>
+                <p className="text-xs text-muted-foreground">
+                Empréstimos com pagamentos atrasados
+                </p>
+            </CardContent>
+            </Card>
+        </div>
+
+
       <div className="mb-4">
         <LoanStatusFilters activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
       </div>
       <div>
         {filteredLoans.map(loan => <LoanCard key={loan.id} loan={loan} onEdit={() => handleOpenEditLoan(loan)} onDelete={() => handleOpenDeleteDialog(loan)} />)}
+        {filteredLoans.length === 0 && (
+            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-center">
+                <p className="text-muted-foreground">Nenhum empréstimo encontrado para o filtro "{activeFilter}".</p>
+            </div>
+        )}
       </div>
 
       <NewLoanDialog 

@@ -1,13 +1,17 @@
+'use client';
 
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Banknote, PlusCircle, ArrowUpRight, DollarSign } from 'lucide-react';
+import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { accounts } from '@/lib/data';
 import Link from 'next/link';
 
 const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
+const totalIncome = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Receita').reduce((acc, t) => acc + t.amount, 0);
+const totalExpenses = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Despesa').reduce((acc, t) => acc + t.amount, 0);
+
 
 export default function ContasPage() {
   return (
@@ -26,23 +30,37 @@ export default function ContasPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Total de Contas
-                    </CardTitle>
-                    <Banknote className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{accounts.length}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                        Saldo Total Geral
+                        Saldo Total
                     </CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{formatCurrency(totalBalance)}</div>
+                    <p className="text-xs text-muted-foreground">Soma dos saldos de {accounts.length} contas</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                        Receitas Totais
+                    </CardTitle>
+                    <ArrowUp className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-green-500">{formatCurrency(totalIncome)}</div>
+                    <p className="text-xs text-muted-foreground">Soma de todas as receitas</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                        Despesas Totais
+                    </CardTitle>
+                    <ArrowDown className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-red-500">{formatCurrency(totalExpenses)}</div>
+                     <p className="text-xs text-muted-foreground">Soma de todas as despesas</p>
                 </CardContent>
             </Card>
       </div>
