@@ -8,7 +8,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { AppNav } from '@/components/app-nav';
-import { Landmark, CircleUser } from 'lucide-react';
+import { Landmark, CircleUser, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ export default function AppLayout({
         <SidebarHeader>
           <div className="flex items-center gap-2 p-2">
             <Landmark className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">Gestão Fácil</h1>
+            <h1 className="text-xl font-bold">Gestor Financeiro</h1>
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -46,22 +46,29 @@ export default function AppLayout({
           <div className="w-full flex-1">
             {/* Can add a search bar here if needed */}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="rounded-full">
-                <CircleUser className="h-5 w-5" />
-                <span className="sr-only">Toggle user menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Configurações</DropdownMenuItem>
-              <DropdownMenuItem>Suporte</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Sair</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon">
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full">
+                  <CircleUser className="h-5 w-5" />
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Configurações</DropdownMenuItem>
+                <DropdownMenuItem>Suporte</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Sair</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </SidebarInset>

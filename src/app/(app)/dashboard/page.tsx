@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { loans } from '@/lib/data';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { ArrowUpRight, DollarSign, List, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,20 @@ export default function DashboardPage() {
   const emprestimosAtrasados = loans.filter(l => l.status === 'Atrasado').length;
 
   const recentLoans = [...loans].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).slice(0, 5);
+
+   const getStatusVariant = (status: 'Ativo' | 'Atrasado' | 'Pago' | 'Pendente' | 'Quitado' | undefined): 'default' | 'secondary' | 'destructive' => {
+      switch (status) {
+        case 'Pago':
+        case 'Quitado':
+          return 'default'
+        case 'Atrasado':
+          return 'destructive';
+        case 'Ativo':
+        case 'Pendente':
+        default:
+          return 'secondary';
+      }
+    };
 
   return (
     <>
@@ -118,7 +132,7 @@ export default function DashboardPage() {
                       <div className="font-medium">{loan.borrowerName}</div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <Badge variant={loan.status === 'Pago' ? 'default' : loan.status === 'Atrasado' ? 'destructive' : 'secondary'}>
+                      <Badge variant={getStatusVariant(loan.status)}>
                         {loan.status}
                       </Badge>
                     </TableCell>
