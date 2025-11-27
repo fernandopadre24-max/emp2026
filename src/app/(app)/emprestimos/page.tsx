@@ -33,20 +33,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 type LoanStatus = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 
 const LoanStatusFilters = ({ activeFilter, setActiveFilter }: { activeFilter: LoanStatus, setActiveFilter: (filter: LoanStatus) => void }) => {
-    const filters: LoanStatus[] = ['Todos', 'Atrasado', 'Parcialmente Pago', 'Pendente', 'Quitado'];
+    const filters: LoanStatus[] = ['Todos', 'Ativo', 'Atrasado', 'Pendente', 'Quitado'];
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2">
             {filters.map(filter => (
                 <Button 
                     key={filter}
                     variant={activeFilter === filter ? 'default' : 'outline'}
                     size="sm"
                     className={cn(
+                        'shrink-0',
                         activeFilter === filter 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-card text-card-foreground border-border',
-                        'hover:bg-blue-500 hover:text-white'
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-card text-card-foreground border-border'
                     )}
                     onClick={() => setActiveFilter(filter)}
                 >
@@ -63,12 +63,14 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
     const [isHistoryDialogOpen, setHistoryDialogOpen] = React.useState(false);
     const [selectedInstallment, setSelectedInstallment] = React.useState<Installment | null>(null);
 
-    const handlePayClick = (installment: Installment) => {
+    const handlePayClick = (e: React.MouseEvent, installment: Installment) => {
+        e.stopPropagation();
         setSelectedInstallment(installment);
         setPaymentDialogOpen(true);
     };
 
-    const handleHistoryClick = (installment: Installment) => {
+    const handleHistoryClick = (e: React.MouseEvent, installment: Installment) => {
+        e.stopPropagation();
         setSelectedInstallment(installment);
         setHistoryDialogOpen(true);
     };
@@ -93,48 +95,50 @@ const AmortizationPlan = ({ loan }: { loan: Loan }) => {
       <h3 className="font-semibold text-lg mb-4 text-foreground">
         Plano de Amortização - {loan.borrowerName} ({loan.id})
       </h3>
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b-white/10">
-            <TableHead className="text-muted-foreground">#</TableHead>
-            <TableHead className="text-muted-foreground">Vencimento</TableHead>
-            <TableHead className="text-muted-foreground">Valor Parcela</TableHead>
-            <TableHead className="text-muted-foreground">Principal</TableHead>
-            <TableHead className="text-muted-foreground">Juros</TableHead>
-            <TableHead className="text-muted-foreground">Valor Pago</TableHead>
-            <TableHead className="text-muted-foreground">Status</TableHead>
-            <TableHead className="text-muted-foreground text-right">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {loan.installments.map((installment) => (
-            <TableRow key={installment.number} className="border-b-white/10">
-              <TableCell className="font-medium text-foreground">{installment.number}</TableCell>
-              <TableCell className="text-foreground">{new Date(installment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-              <TableCell className="text-foreground">{formatCurrency(installment.amount)}</TableCell>
-              <TableCell className="text-foreground">{formatCurrency(installment.principal)}</TableCell>
-              <TableCell className="text-foreground">{formatCurrency(installment.interest)}</TableCell>
-              <TableCell className="text-green-400">{formatCurrency(installment.paidAmount)}</TableCell>
-              <TableCell>
-                <Badge className={cn('text-xs', getStatusVariant(installment.status))}>
-                  {installment.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button 
-                    variant="link" 
-                    className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline" 
-                    onClick={() => handlePayClick(installment)}
-                    disabled={installment.status === 'Pago'}
-                >
-                    Pagar
-                </Button>
-                <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4" onClick={() => handleHistoryClick(installment)}>Histórico</Button>
-              </TableCell>
+      <div className="overflow-x-auto">
+        <Table>
+            <TableHeader>
+            <TableRow className="border-b-white/10">
+                <TableHead className="text-muted-foreground">#</TableHead>
+                <TableHead className="text-muted-foreground">Vencimento</TableHead>
+                <TableHead className="text-muted-foreground">Valor Parcela</TableHead>
+                <TableHead className="text-muted-foreground">Principal</TableHead>
+                <TableHead className="text-muted-foreground">Juros</TableHead>
+                <TableHead className="text-muted-foreground">Valor Pago</TableHead>
+                <TableHead className="text-muted-foreground">Status</TableHead>
+                <TableHead className="text-muted-foreground text-right">Ações</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+            {loan.installments.map((installment) => (
+                <TableRow key={installment.number} className="border-b-white/10">
+                <TableCell className="font-medium text-foreground">{installment.number}</TableCell>
+                <TableCell className="text-foreground">{new Date(installment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell className="text-foreground">{formatCurrency(installment.amount)}</TableCell>
+                <TableCell className="text-foreground">{formatCurrency(installment.principal)}</TableCell>
+                <TableCell className="text-foreground">{formatCurrency(installment.interest)}</TableCell>
+                <TableCell className="text-green-400">{formatCurrency(installment.paidAmount)}</TableCell>
+                <TableCell>
+                    <Badge className={cn('text-xs', getStatusVariant(installment.status))}>
+                    {installment.status}
+                    </Badge>
+                </TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                    <Button 
+                        variant="link" 
+                        className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline" 
+                        onClick={(e) => handlePayClick(e, installment)}
+                        disabled={installment.status === 'Pago'}
+                    >
+                        Pagar
+                    </Button>
+                    <Button variant="link" className="text-muted-foreground p-0 h-auto ml-4" onClick={(e) => handleHistoryClick(e, installment)}>Histórico</Button>
+                </TableCell>
+                </TableRow>
+            ))}
+            </TableBody>
+        </Table>
+      </div>
     </div>
     <PaymentDialog 
         isOpen={isPaymentDialogOpen}
@@ -191,10 +195,10 @@ const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, 
      <div className="bg-card border border-border rounded-lg mb-4">
        <Accordion type="single" collapsible onValueChange={(value) => setIsOpen(!!value)}>
          <AccordionItem value={loan.id} className="border-none">
-            <AccordionTrigger className="p-4 hover:no-underline">
-                <div className="flex flex-col md:flex-row gap-4 w-full text-left">
+            <AccordionTrigger className="p-4 hover:no-underline data-[state=open]:bg-card-foreground/5 rounded-t-lg">
+                <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
                     <div className="flex-1">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
                             <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
                             <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
                             <Badge variant="outline" className="border-border text-muted-foreground flex items-center gap-1"><Banknote className="w-3 h-3" /> Nubank</Badge>
@@ -205,7 +209,7 @@ const LoanCard = ({ loan, onEdit, onDelete }: { loan: Loan, onEdit: () => void, 
                         </div>
                         <div className="mt-2">
                             <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
-                            <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(loan.amount / totalInstallments)}</p>
+                            <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
                             <p className="text-sm text-muted-foreground mt-1">
                                 Juros: <span className="text-red-400">{formatCurrency(totalInterest)}</span> | 
                                 Custo Efetivo Total: <span className="text-foreground font-medium">{formatCurrency(loan.amount + totalInterest)}</span>
@@ -279,19 +283,10 @@ export default function EmprestimosPage() {
     if (activeFilter === 'Todos') {
       return loans;
     }
-    const statusMap = {
-        'Atrasado': 'Atrasado',
-        'Quitado': 'Quitado',
-        'Parcialmente Pago': 'Ativo', // Example mapping
-        'Pendente': 'Pendente',
-    }
-    const filterKey = statusMap[activeFilter as keyof typeof statusMap] || activeFilter;
-    
     if (activeFilter === 'Parcialmente Pago') {
         return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
     }
-    
-    return loans.filter(loan => loan.status === filterKey);
+    return loans.filter(loan => loan.status === activeFilter);
   }, [activeFilter, loans]);
 
   const summary = React.useMemo(() => {
@@ -309,7 +304,7 @@ export default function EmprestimosPage() {
         description="Gerencie todos os seus empréstimos aqui."
         action={
             <div className="flex items-center gap-4">
-                <Button onClick={handleOpenNewLoan} className="bg-blue-600 hover:bg-blue-500 text-white">
+                <Button onClick={handleOpenNewLoan} className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Novo Empréstimo
                 </Button>
@@ -401,5 +396,7 @@ export default function EmprestimosPage() {
     </div>
   );
 }
+
+    
 
     
