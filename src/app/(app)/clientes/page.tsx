@@ -7,6 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Hash,
   Phone,
   MapPin,
@@ -20,7 +28,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { clients as initialClients, loans as allLoans } from '@/lib/data';
-import type { Client, Loan } from '@/lib/types';
+import type { Client, Loan, Payment } from '@/lib/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
@@ -87,7 +95,8 @@ function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[]
 
   const clientLoans = loans.filter(loan => loan.clientId === client.id);
   const totalBorrowed = clientLoans.reduce((acc, loan) => acc + loan.amount, 0);
-  const totalPaid = clientLoans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0);
+  const allClientPayments = clientLoans.flatMap(loan => loan.payments);
+  const totalPaid = allClientPayments.reduce((acc, p) => acc + p.amount, 0);
 
   const getStatusVariant = (status: Loan['status']): 'default' | 'secondary' | 'destructive' => {
       switch (status) {
@@ -187,9 +196,34 @@ function ClientDetails({ client, loans }: { client: Client | null; loans: Loan[]
           <CardTitle>Histórico de Pagamentos</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-24 items-center justify-center rounded-lg border border-dashed">
-            <p className="text-center text-sm text-muted-foreground">Nenhum pagamento registrado para este cliente.</p>
-          </div>
+          {allClientPayments.length > 0 ? (
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>ID Empréstimo</TableHead>
+                        <TableHead>Forma</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {allClientPayments.map((payment) => (
+                        <TableRow key={payment.id}>
+                            <TableCell>{new Date(payment.paymentDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                            <TableCell className="font-mono text-xs">{payment.loanId}</TableCell>
+                            <TableCell>
+                                <Badge variant="secondary">{payment.method || 'N/D'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-green-400">{formatCurrency(payment.amount)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+          ) : (
+            <div className="flex h-24 items-center justify-center rounded-lg border border-dashed">
+                <p className="text-center text-sm text-muted-foreground">Nenhum pagamento registrado para este cliente.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
