@@ -8,7 +8,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { AppNav } from '@/components/app-nav';
-import { Landmark, CircleUser } from 'lucide-react';
+import { Landmark, CircleUser, Calculator, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +20,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { FinancialProvider } from '@/context/financial-context';
+import { CalculatorPopover } from '@/components/calculator-popover';
+import Link from 'next/link';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+
 
 export default function AppLayout({
   children,
@@ -49,8 +57,15 @@ export default function AppLayout({
             <div className="w-full flex-1">
               {/* Can add a search bar here if needed */}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <ThemeToggle />
+              <CalculatorPopover />
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/calendario">
+                  <Calendar className="h-5 w-5" />
+                  <span className="sr-only">Calendário</span>
+                </Link>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="rounded-full">

@@ -5,7 +5,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Home, List, BarChart3, Bot, Contact, Calendar, Settings } from 'lucide-react';
+import { Home, List, BarChart3, Bot, Contact, Calendar, Settings, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/clientes', label: 'Clientes', icon: Contact },
   { href: '/contas', label: 'Contas', icon: BarChart3 },
   { href: '/calendario', label: 'Calendário', icon: Calendar },
+  { href: '/relatorios', label: 'Relatórios', icon: FileText },
 ];
 
 const bottomNavItems = [
