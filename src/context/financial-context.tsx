@@ -5,6 +5,7 @@ import { add } from 'date-fns';
 import { accounts as initialAccounts, clients as initialClients, loans as initialLoans } from '@/lib/data';
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
 import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
+import { User as UserIcon } from 'lucide-react';
 
 interface FinancialDataContextType {
   accounts: Account[];
@@ -32,7 +33,12 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
   const createLoan = (values: NewLoanFormValues) => {
     const {
+      isNewClient,
       clientId,
+      borrowerName,
+      borrowerCpf,
+      borrowerPhone,
+      borrowerAddress,
       accountId,
       amount,
       installments: numInstallments,
@@ -42,10 +48,28 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       iofValue
     } = values;
 
-    const client = clients.find(c => c.id === clientId);
-    if (!client) {
-        console.error("Client not found");
-        return;
+    let finalClientId = clientId;
+    let finalBorrowerName = borrowerName;
+
+    if (isNewClient) {
+        const newClient: Client = {
+            id: `client-${Date.now()}`,
+            name: borrowerName!,
+            cpf: borrowerCpf!,
+            phone: borrowerPhone!,
+            address: borrowerAddress!,
+            avatar: UserIcon,
+        };
+        setClients(prev => [...prev, newClient]);
+        finalClientId = newClient.id;
+        finalBorrowerName = newClient.name;
+    } else {
+        const client = clients.find(c => c.id === clientId);
+        if (!client) {
+            console.error("Client not found");
+            return;
+        }
+        finalBorrowerName = client.name;
     }
     
     // Calculate installments
@@ -74,8 +98,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
     const newLoan: Loan = {
       id: `EMP-${Date.now()}`,
-      borrowerName: client.name,
-      clientId,
+      borrowerName: finalBorrowerName!,
+      clientId: finalClientId!,
       accountId,
       amount,
       interestRate,
@@ -95,7 +119,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         const newTransaction: Transaction = {
           id: `TRX-${Date.now()}`,
           date: new Date().toISOString().split('T')[0],
-          description: `Empréstimo concedido a ${client.name}`,
+          description: `Empréstimo concedido a ${finalBorrowerName}`,
           amount: amount,
           type: 'Despesa',
           category: 'Empréstimos',
@@ -243,3 +267,5 @@ export function useFinancialData() {
   }
   return context;
 }
+
+    

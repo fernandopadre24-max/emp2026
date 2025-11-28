@@ -41,6 +41,8 @@ import { formatCurrency } from '@/lib/utils';
 import { add } from 'date-fns';
 import type { Loan, Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 type SimulatedInstallment = {
   number: number;
@@ -57,7 +59,12 @@ type SimulationResult = {
 };
 
 const formSchema = z.object({
-  clientId: z.string().min(1, 'Selecione um cliente.'),
+  isNewClient: z.boolean().default(false),
+  clientId: z.string().optional(),
+  borrowerName: z.string().optional(),
+  borrowerCpf: z.string().optional(),
+  borrowerPhone: z.string().optional(),
+  borrowerAddress: z.string().optional(),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -85,23 +92,41 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   const { toast } = useToast();
   const { accounts, clients } = useFinancialData();
   const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
+  const [isNewClient, setIsNewClient] = React.useState(false);
 
   const isEditMode = !!loanToEdit;
   
-  const refinedSchema = formSchema.refine(data => {
-      if (!data.accountId || !data.amount) return true;
-      const selectedAccount = accounts.find(acc => acc.id === data.accountId);
-      if (!selectedAccount) return true;
-      return data.amount <= selectedAccount.balance;
-  }, {
-      message: 'O valor do empréstimo não pode exceder o saldo da conta selecionada.',
-      path: ['amount'],
+  const refinedSchema = formSchema.superRefine((data, ctx) => {
+    if (data.isNewClient) {
+        if (!data.borrowerName) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório.", path: ["borrowerName"] });
+        if (!data.borrowerCpf) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF é obrigatório.", path: ["borrowerCpf"] });
+        if (!data.borrowerPhone) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O telefone é obrigatório.", path: ["borrowerPhone"] });
+        if (!data.borrowerAddress) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O endereço é obrigatório.", path: ["borrowerAddress"] });
+    } else {
+        if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
+    }
+
+    if (data.accountId && data.amount) {
+        const selectedAccount = accounts.find(acc => acc.id === data.accountId);
+        if (selectedAccount && data.amount > selectedAccount.balance) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'O valor do empréstimo não pode exceder o saldo da conta selecionada.',
+                path: ['amount'],
+            });
+        }
+    }
   });
 
   const form = useForm<z.infer<typeof refinedSchema>>({
     resolver: zodResolver(refinedSchema),
     defaultValues: {
+      isNewClient: false,
       clientId: '',
+      borrowerName: '',
+      borrowerCpf: '',
+      borrowerPhone: '',
+      borrowerAddress: '',
       accountId: '',
       amount: 1000,
       installments: 12,
@@ -114,9 +139,15 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
 
   React.useEffect(() => {
     if (isOpen) {
+        setIsNewClient(false);
         if (isEditMode && loanToEdit) {
             form.reset({
+                isNewClient: false,
                 clientId: loanToEdit.clientId,
+                borrowerName: '',
+                borrowerCpf: '',
+                borrowerPhone: '',
+                borrowerAddress: '',
                 accountId: loanToEdit.accountId,
                 amount: loanToEdit.amount,
                 installments: loanToEdit.installments.length,
@@ -128,7 +159,12 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
             setSimulation(null);
         } else {
             form.reset({
+                isNewClient: false,
                 clientId: '',
+                borrowerName: '',
+                borrowerCpf: '',
+                borrowerPhone: '',
+                borrowerAddress: '',
                 accountId: '',
                 amount: 1000,
                 installments: 12,
@@ -141,6 +177,11 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
         }
     }
   }, [loanToEdit, isEditMode, form, isOpen]);
+
+  const watchedIsNewClient = form.watch('isNewClient');
+  React.useEffect(() => {
+    setIsNewClient(watchedIsNewClient);
+  }, [watchedIsNewClient]);
 
 
   function handleSimulate() {
@@ -160,7 +201,6 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
     const iof = values.iofValue || (values.iofRate ? amount * (values.iofRate / 100) : 0);
     const totalLoanAmount = amount + iof;
 
-    // Tabela Price
     const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
 
     let remainingBalance = totalLoanAmount;
@@ -190,13 +230,13 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   }
 
   function onSubmit(values: z.infer<typeof refinedSchema>) {
-    const client = clients.find(c => c.id === values.clientId);
+    const borrowerName = values.isNewClient ? values.borrowerName : clients.find(c => c.id === values.clientId)?.name;
 
     onConfirm(values, loanToEdit?.id);
     
     toast({
       title: isEditMode ? 'Empréstimo Atualizado!' : 'Empréstimo Criado!',
-      description: `O empréstimo para ${client?.name} foi ${isEditMode ? 'atualizado' : 'registrado'}.`,
+      description: `O empréstimo para ${borrowerName} foi ${isEditMode ? 'atualizado' : 'registrado'}.`,
       className: 'bg-primary text-primary-foreground',
     });
     
@@ -219,29 +259,111 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+
+            <FormField
+              control={form.control}
+              name="isNewClient"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Adicionar Novo Cliente?</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isEditMode}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {isNewClient ? (
+                <div className="space-y-4 rounded-md border p-4">
+                    <FormField
+                        control={form.control}
+                        name="borrowerName"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nome do Cliente</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Nome completo" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="borrowerCpf"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>CPF</FormLabel>
+                                <FormControl>
+                                <Input placeholder="000.000.000-00" {...field} value={field.value || ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="borrowerPhone"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Telefone</FormLabel>
+                                <FormControl>
+                                <Input placeholder="(00) 90000-0000" {...field} value={field.value || ''} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                     <FormField
+                        control={form.control}
+                        name="borrowerAddress"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Endereço</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Rua, número, bairro..." {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+            ) : (
+                <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Cliente</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isEditMode}>
+                        <FormControl>
+                            <SelectTrigger>
+                            <SelectValue placeholder="Selecione o cliente" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {clients.map((client: Client) => (
+                            <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            )}
+
+            <Separator />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients.map((client: Client) => (
-                           <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="accountId"
@@ -266,9 +388,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
+               <FormField
                 control={form.control}
                 name="amount"
                 render={({ field }) => (
@@ -281,6 +401,8 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                   </FormItem>
                 )}
               />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="installments"
@@ -294,8 +416,6 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="interestRate"
@@ -309,6 +429,8 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                   </FormItem>
                 )}
               />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -322,9 +444,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
+                 <FormField
                 control={form.control}
                 name="iofRate"
                 render={({ field }) => (
@@ -343,12 +463,14 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                   </FormItem>
                 )}
               />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="iofValue"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor do IOF (R$)</FormLabel>
+                    <FormLabel>Valor do IOF (R$) (Opcional)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -363,6 +485,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                 )}
               />
             </div>
+
 
             {simulation && (
                  <div className="space-y-4 rounded-lg border bg-background/50 p-4">
@@ -428,3 +551,5 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
     </Dialog>
   );
 }
+
+    
