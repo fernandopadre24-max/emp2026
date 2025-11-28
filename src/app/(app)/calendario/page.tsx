@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { useFinancialData } from '@/context/financial-context';
 import type { Loan } from '@/lib/types';
