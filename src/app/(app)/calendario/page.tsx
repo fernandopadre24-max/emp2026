@@ -9,8 +9,12 @@ import type { Loan } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
 export default function CalendarioPage() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [date, setDate] = React.useState<Date | undefined>(undefined);
   const { loans } = useFinancialData();
+
+  React.useEffect(() => {
+    setDate(new Date());
+  }, []);
 
   // Find all due dates for pending installments
   const dueDates = React.useMemo(() => {
@@ -84,7 +88,7 @@ export default function CalendarioPage() {
               </ul>
             ) : (
               <div className="flex h-40 items-center justify-center rounded-lg border border-dashed">
-                <p className="text-center text-sm text-muted-foreground">Nenhum vencimento para esta data.</p>
+                <p className="text-center text-sm text-muted-foreground">{date ? 'Nenhum vencimento para esta data.' : 'Selecione uma data para ver os vencimentos.'}</p>
               </div>
             )}
           </CardContent>
