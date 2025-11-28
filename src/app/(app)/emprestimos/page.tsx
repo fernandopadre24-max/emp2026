@@ -44,17 +44,25 @@ const AmortizationPlan = ({
   onPayClick: (installment: Installment) => void;
   onHistoryClick: (installment: Installment) => void;
 }) => {
-  const getStatusVariant = (status: Installment['status']) => {
+  const getStatusInfo = (status: Installment['status'], dueDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
+    const dueDateObj = new Date(dueDate + 'T00:00:00');
+
+    if ((status === 'Pendente' || status === 'Parcialmente Pago') && dueDateObj < today) {
+      return { text: 'Atrasado', variant: 'bg-red-500/20 text-red-400' };
+    }
+
     switch (status) {
       case 'Pago':
-        return 'bg-green-500/20 text-green-400';
+        return { text: 'Pago', variant: 'bg-green-500/20 text-green-400' };
       case 'Parcialmente Pago':
-        return 'bg-yellow-500/20 text-yellow-400';
+        return { text: 'Parcialmente Pago', variant: 'bg-yellow-500/20 text-yellow-400' };
       case 'Atrasado':
-        return 'bg-red-500/20 text-red-400';
+        return { text: 'Atrasado', variant: 'bg-red-500/20 text-red-400' };
       case 'Pendente':
       default:
-        return 'bg-gray-500/20 text-gray-400';
+        return { text: 'Pendente', variant: 'bg-gray-500/20 text-gray-400' };
     }
   };
 
@@ -76,44 +84,47 @@ const AmortizationPlan = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loan.installments.map((installment) => (
-              <TableRow key={installment.number} className="border-b-white/10">
-                <TableCell className="font-medium text-foreground">{installment.number}</TableCell>
-                <TableCell className="text-foreground">{new Date(installment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                <TableCell className="text-foreground">{formatCurrency(installment.amount)}</TableCell>
-                <TableCell className="text-foreground">{formatCurrency(installment.principal)}</TableCell>
-                <TableCell className="text-foreground">{formatCurrency(installment.interest)}</TableCell>
-                <TableCell className="text-green-400">{formatCurrency(installment.paidAmount)}</TableCell>
-                <TableCell>
-                  <Badge className={cn('text-xs', getStatusVariant(installment.status))}>
-                    {installment.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right whitespace-nowrap">
-                  <Button
-                    variant="link"
-                    className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPayClick(installment);
-                    }}
-                    disabled={installment.status === 'Pago'}
-                  >
-                    Pagar
-                  </Button>
-                  <Button
-                    variant="link"
-                    className="text-muted-foreground p-0 h-auto ml-4"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onHistoryClick(installment);
-                    }}
-                  >
-                    Histórico
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {loan.installments.map((installment) => {
+              const statusInfo = getStatusInfo(installment.status, installment.dueDate);
+              return (
+                <TableRow key={installment.number} className="border-b-white/10">
+                  <TableCell className="font-medium text-foreground">{installment.number}</TableCell>
+                  <TableCell className="text-foreground">{new Date(installment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell className="text-foreground">{formatCurrency(installment.amount)}</TableCell>
+                  <TableCell className="text-foreground">{formatCurrency(installment.principal)}</TableCell>
+                  <TableCell className="text-foreground">{formatCurrency(installment.interest)}</TableCell>
+                  <TableCell className="text-green-400">{formatCurrency(installment.paidAmount)}</TableCell>
+                  <TableCell>
+                    <Badge className={cn('text-xs', statusInfo.variant)}>
+                      {statusInfo.text}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="link"
+                      className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPayClick(installment);
+                      }}
+                      disabled={installment.status === 'Pago'}
+                    >
+                      Pagar
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="text-muted-foreground p-0 h-auto ml-4"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHistoryClick(installment);
+                      }}
+                    >
+                      Histórico
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -189,7 +200,7 @@ export default function EmprestimosPage() {
     totalEmprestado: loans.reduce((acc, loan) => acc + loan.amount, 0),
     totalRecebido: loans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0),
     emprestimosAtivos: loans.filter(l => l.status === 'Ativo').length,
-    emprestimosAtrasados: loans.filter(l => l.status === 'Atrasado').length,
+    emprestimosAtrasados: loans.filter(l => l.status === 'Atrasado' || l.installments.some(i => i.status === 'Pendente' && new Date(i.dueDate + 'T00:00:00') < new Date())).length,
   }), [loans]);
   
   const loanToDelete = loans.find(l => l.id === deletingLoanId);
@@ -272,6 +283,9 @@ export default function EmprestimosPage() {
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
           const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
           const totalAmount = loan.installments.reduce((acc, i) => acc + i.amount, 0);
+          
+          const isOverdue = (loan.status === 'Ativo' || loan.status === 'Pendente') && loan.installments.some(i => (i.status === 'Pendente' || i.status === 'Parcialmente Pago') && new Date(i.dueDate + 'T00:00:00') < new Date());
+          const displayStatus = isOverdue ? 'Atrasado' : loan.status;
 
           const getStatusClasses = (status: Loan['status']) => {
             switch (status) {
@@ -307,7 +321,7 @@ export default function EmprestimosPage() {
                                 <div className="w-full md:w-64 flex-shrink-0">
                                     <div className="flex items-center justify-between">
                                         <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                                        <Badge className={cn('text-xs', getStatusClasses(loan.status))}>{loan.status}</Badge>
+                                        <Badge className={cn('text-xs', getStatusClasses(displayStatus))}>{displayStatus}</Badge>
                                     </div>
                                     <div className="mt-2">
                                         <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
