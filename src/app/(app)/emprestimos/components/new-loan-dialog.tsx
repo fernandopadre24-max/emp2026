@@ -92,13 +92,12 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   const { toast } = useToast();
   const { accounts, clients } = useFinancialData();
   const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
-  const [isNewClient, setIsNewClient] = React.useState(false);
 
   const isEditMode = !!loanToEdit;
   
   const refinedSchema = formSchema.superRefine((data, ctx) => {
     if (data.isNewClient) {
-        if (!data.borrowerName) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório.", path: ["borrowerName"] });
+        if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
         if (!data.borrowerCpf) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF é obrigatório.", path: ["borrowerCpf"] });
         if (!data.borrowerPhone) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O telefone é obrigatório.", path: ["borrowerPhone"] });
         if (!data.borrowerAddress) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O endereço é obrigatório.", path: ["borrowerAddress"] });
@@ -108,7 +107,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
 
     if (data.accountId && data.amount) {
         const selectedAccount = accounts.find(acc => acc.id === data.accountId);
-        if (selectedAccount && data.amount > selectedAccount.balance) {
+        if (selectedAccount && data.amount > selectedAccount.balance && !isEditMode) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: 'O valor do empréstimo não pode exceder o saldo da conta selecionada.',
@@ -118,9 +117,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
     }
   });
 
-  const form = useForm<z.infer<typeof refinedSchema>>({
-    resolver: zodResolver(refinedSchema),
-    defaultValues: {
+  const defaultFormValues = {
       isNewClient: false,
       clientId: '',
       borrowerName: '',
@@ -134,20 +131,19 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
       startDate: new Date().toISOString().split('T')[0],
       iofRate: '' as any,
       iofValue: '' as any,
-    },
+  };
+
+  const form = useForm<z.infer<typeof refinedSchema>>({
+    resolver: zodResolver(refinedSchema),
+    defaultValues: defaultFormValues,
   });
 
   React.useEffect(() => {
     if (isOpen) {
-        setIsNewClient(false);
         if (isEditMode && loanToEdit) {
             form.reset({
                 isNewClient: false,
                 clientId: loanToEdit.clientId,
-                borrowerName: '',
-                borrowerCpf: '',
-                borrowerPhone: '',
-                borrowerAddress: '',
                 accountId: loanToEdit.accountId,
                 amount: loanToEdit.amount,
                 installments: loanToEdit.installments.length,
@@ -156,33 +152,14 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                 iofRate: loanToEdit.iofRate as any,
                 iofValue: loanToEdit.iofValue as any,
             });
-            setSimulation(null);
         } else {
-            form.reset({
-                isNewClient: false,
-                clientId: '',
-                borrowerName: '',
-                borrowerCpf: '',
-                borrowerPhone: '',
-                borrowerAddress: '',
-                accountId: '',
-                amount: 1000,
-                installments: 12,
-                interestRate: 1.99,
-                startDate: new Date().toISOString().split('T')[0],
-                iofRate: '' as any,
-                iofValue: '' as any,
-            });
-            setSimulation(null);
+            form.reset(defaultFormValues);
         }
+        setSimulation(null);
     }
-  }, [loanToEdit, isEditMode, form, isOpen]);
+  }, [isOpen, isEditMode, loanToEdit, form]);
 
-  const watchedIsNewClient = form.watch('isNewClient');
-  React.useEffect(() => {
-    setIsNewClient(watchedIsNewClient);
-  }, [watchedIsNewClient]);
-
+  const isNewClient = form.watch('isNewClient');
 
   function handleSimulate() {
     const values = form.getValues();
@@ -243,16 +220,8 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
     onOpenChange(false);
   }
 
-  const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      setSimulation(null);
-      form.reset();
-    }
-    onOpenChange(open);
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] bg-card text-card-foreground border-border">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Editar Empréstimo' : 'Novo Empréstimo'}</DialogTitle>
