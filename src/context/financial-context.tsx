@@ -7,7 +7,7 @@ import { User as UserIcon, Library, Wallet } from 'lucide-react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { writeBatch, collection, doc, serverTimestamp, Timestamp, setDoc, addDoc, deleteDoc, updateDoc, runTransaction, where, query, getDocs } from 'firebase/firestore';
+import { writeBatch, collection, doc, serverTimestamp, Timestamp, setDoc, addDoc, deleteDoc, updateDoc, runTransaction, where, query, getDocs, arrayUnion } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { add, format } from 'date-fns';
 import type { NewAccountFormValues } from '@/app/(app)/contas/components/new-account-dialog';
@@ -18,9 +18,9 @@ interface FinancialDataContextType {
   clients: Client[];
   loans: Loan[];
   loading: boolean;
-  createLoan: (values: NewLoanFormValues) => void;
-  updateLoan: (values: NewLoanFormValues, id: string) => void;
-  deleteLoan: (id: string) => void;
+  createLoan: (values: NewLoanFormValues) => Promise<void>;
+  updateLoan: (values: NewLoanFormValues, id: string) => Promise<void>;
+  deleteLoan: (id: string) => Promise<void>;
   registerPayment: (
     loanId: string,
     installmentNumber: number,
@@ -28,10 +28,10 @@ interface FinancialDataContextType {
     paymentDate: string,
     paymentMethod: string,
     destinationAccountId: string
-  ) => void;
+  ) => Promise<void>;
   seedDatabase: () => Promise<void>;
-  createAccount: (values: NewAccountFormValues) => void;
-  createClient: (values: NewClientFormValues) => void;
+  createAccount: (values: NewAccountFormValues) => Promise<void>;
+  createClient: (values: NewClientFormValues) => Promise<void>;
 }
 
 const FinancialDataContext = React.createContext<FinancialDataContextType | undefined>(undefined);
@@ -40,7 +40,6 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { user } = useUser();
 
-  // We pass the user ID to the filter so that the hooks are re-evaluated when the user changes
   const { data: accountsData, loading: accountsLoading } = useCollection<Account>('accounts');
   const { data: clientsData, loading: clientsLoading } = useCollection<Client>('clients');
   const { data: loansData, loading: loansLoading } = useCollection<Loan>('loans');
@@ -63,49 +62,225 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
   const createAccount = async (values: NewAccountFormValues) => {
     if (!firestore) return;
-    try {
-      const accountRef = doc(collection(firestore, 'accounts'));
-      await setDoc(accountRef, { ...values, id: accountRef.id, transactions: [] });
-    } catch(err) {
+    const newAccountRef = doc(collection(firestore, 'accounts'));
+    const newAccountData = { ...values, id: newAccountRef.id, transactions: [] };
+    
+    setDoc(newAccountRef, newAccountData).catch(err => {
        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'accounts',
+          path: `accounts/${newAccountRef.id}`,
           operation: 'create',
-          requestResourceData: values,
+          requestResourceData: newAccountData,
         }, err));
-    }
+    });
   }
   
   const createClient = async (values: NewClientFormValues) => {
     if (!firestore) return;
-    try {
-      const clientRef = doc(collection(firestore, 'clients'));
-      await setDoc(clientRef, { ...values, id: clientRef.id });
-    } catch(err) {
+    const newClientRef = doc(collection(firestore, 'clients'));
+    const newClientData = { ...values, id: newClientRef.id };
+
+    setDoc(newClientRef, newClientData).catch(err => {
        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'clients',
+          path: `clients/${newClientRef.id}`,
           operation: 'create',
-          requestResourceData: values,
+          requestResourceData: newClientData,
         }, err));
-    }
+    });
   }
 
 
-  const createLoan = (values: NewLoanFormValues) => {
-    // This will be replaced with Firestore logic
-    console.log("Creating loan (local):", values);
+  const createLoan = async (values: NewLoanFormValues) => {
+    if (!firestore) return;
+
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        let clientId = values.clientId;
+        let borrowerName = clients.find(c => c.id === clientId)?.name;
+
+        const loanRef = doc(collection(firestore, 'loans'));
+        
+        // If it's a new client, create it first
+        if (values.isNewClient && values.borrowerName) {
+            const newClientRef = doc(collection(firestore, 'clients'));
+            clientId = newClientRef.id;
+            borrowerName = values.borrowerName;
+            const newClientData = { 
+                id: clientId,
+                name: values.borrowerName,
+                cpf: values.borrowerCpf,
+                phone: values.borrowerPhone,
+                address: values.borrowerAddress,
+                email: 'n/a', // Assuming email is optional for now
+            };
+            transaction.set(newClientRef, newClientData);
+        }
+
+        // Debit from source account
+        const accountRef = doc(firestore, 'accounts', values.accountId);
+        const accountDoc = await transaction.get(accountRef);
+        if (!accountDoc.exists()) throw new Error("Conta de origem não encontrada.");
+
+        const accountData = accountDoc.data() as Account;
+        if (accountData.balance < values.amount) throw new Error("Saldo insuficiente na conta de origem.");
+
+        const newBalance = accountData.balance - values.amount;
+        const loanTransaction: Transaction = {
+            id: nanoid(10),
+            date: format(new Date(), 'yyyy-MM-dd'),
+            description: `Empréstimo concedido para ${borrowerName}`,
+            amount: values.amount,
+            type: 'Despesa',
+            category: 'Empréstimo Concedido',
+            referenceId: loanRef.id,
+        };
+        transaction.update(accountRef, { 
+            balance: newBalance,
+            transactions: arrayUnion(loanTransaction) 
+        });
+
+        // Calculate installments
+        const { amount, installments: numInstallments, interestRate, startDate, iofRate, iofValue } = values;
+        const monthlyInterestRate = interestRate / 100;
+        const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
+        const totalLoanAmount = amount + iof;
+        const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+        
+        let remainingBalance = totalLoanAmount;
+        const installments = Array.from({ length: numInstallments }).map((_, i) => {
+            const interest = remainingBalance * monthlyInterestRate;
+            const principal = installmentAmount - interest;
+            remainingBalance -= principal;
+
+            const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i + 1 });
+
+            return {
+                number: i + 1,
+                dueDate: format(dueDate, 'yyyy-MM-dd'),
+                amount: parseFloat(installmentAmount.toFixed(2)),
+                principal: parseFloat(principal.toFixed(2)),
+                interest: parseFloat(interest.toFixed(2)),
+                paidAmount: 0,
+                status: 'Pendente' as const,
+            };
+        });
+
+        // Create loan document
+        const newLoan: Omit<Loan, 'payments'> = {
+            id: loanRef.id,
+            borrowerName: borrowerName!,
+            clientId: clientId!,
+            accountId: values.accountId,
+            amount,
+            interestRate,
+            iofRate,
+            iofValue,
+            startDate,
+            status: 'Ativo',
+            installments,
+        };
+
+        transaction.set(loanRef, {...newLoan, payments: []});
+      });
+    } catch (err: any) {
+        console.error("Erro ao criar empréstimo:", err);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'loans ou accounts',
+          operation: 'write',
+          requestResourceData: values,
+        }, err));
+    }
   };
 
-  const updateLoan = (values: NewLoanFormValues, id: string) => {
-    // This will be replaced with Firestore logic
-    console.log("Updating loan (local):", id, values);
+  const updateLoan = async (values: NewLoanFormValues, id: string) => {
+    if (!firestore) return;
+    const loanRef = doc(firestore, 'loans', id);
+
+    try {
+      // NOTE: This is a simplified update. A full update would need to handle
+      // transaction rollbacks and recalculations if the amount changes.
+      // For now, we recalculate installments but don't adjust past account transactions.
+      const { amount, installments: numInstallments, interestRate, startDate, iofRate, iofValue } = values;
+      const monthlyInterestRate = interestRate / 100;
+      const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
+      const totalLoanAmount = amount + iof;
+      const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+      
+      let remainingBalance = totalLoanAmount;
+      const installments = Array.from({ length: numInstallments }).map((_, i) => {
+          const interest = remainingBalance * monthlyInterestRate;
+          const principal = installmentAmount - interest;
+          remainingBalance -= principal;
+          const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i + 1 });
+          return {
+              number: i + 1,
+              dueDate: format(dueDate, 'yyyy-MM-dd'),
+              amount: parseFloat(installmentAmount.toFixed(2)),
+              principal: parseFloat(principal.toFixed(2)),
+              interest: parseFloat(interest.toFixed(2)),
+              paidAmount: 0, // Resets payment status on edit
+              status: 'Pendente' as const,
+          };
+      });
+
+      const updatedLoanData = {
+        amount,
+        interestRate,
+        iofRate,
+        iofValue,
+        startDate,
+        installments,
+        payments: [], // Resets payments on edit
+        status: 'Ativo',
+      };
+
+      await updateDoc(loanRef, updatedLoanData);
+
+    } catch (err: any) {
+        console.error("Erro ao atualizar empréstimo:", err);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `loans/${id}`,
+          operation: 'update',
+          requestResourceData: values,
+        }, err));
+    }
   };
   
-  const deleteLoan = (id: string) => {
-    // This will be replaced with Firestore logic
-    console.log("Deleting loan (local):", id);
+  const deleteLoan = async (id: string) => {
+     if (!firestore) return;
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const loanRef = doc(firestore, 'loans', id);
+        const loanDoc = await transaction.get(loanRef);
+        if (!loanDoc.exists()) throw new Error("Empréstimo não encontrado.");
+
+        const loanData = loanDoc.data() as Loan;
+        const accountRef = doc(firestore, 'accounts', loanData.accountId);
+        const accountDoc = await transaction.get(accountRef);
+        if (!accountDoc.exists()) throw new Error("Conta associada não encontrada.");
+
+        // Revert the original loan transaction
+        const accountData = accountDoc.data() as Account;
+        const newBalance = accountData.balance + loanData.amount;
+        const updatedTransactions = accountData.transactions.filter(t => t.referenceId !== id);
+
+        transaction.update(accountRef, {
+            balance: newBalance,
+            transactions: updatedTransactions,
+        });
+
+        // Delete the loan
+        transaction.delete(loanRef);
+      });
+    } catch (err: any) {
+      console.error("Erro ao deletar empréstimo:", err);
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `loans/${id}`,
+        operation: 'delete',
+      }, err));
+    }
   };
   
-  const registerPayment = (
+  const registerPayment = async (
     loanId: string,
     installmentNumber: number,
     paymentAmount: number,
@@ -113,51 +288,133 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     paymentMethod: string,
     destinationAccountId: string
   ) => {
-    // This will be replaced with Firestore logic
-    console.log("Registering payment (local):", { loanId, installmentNumber, paymentAmount });
+    if (!firestore) return;
+    
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const loanRef = doc(firestore, 'loans', loanId);
+        const loanDoc = await transaction.get(loanRef);
+        if (!loanDoc.exists()) throw new Error("Empréstimo não encontrado.");
+        
+        const loanData = loanDoc.data() as Loan;
+
+        // Update installment
+        const installmentIndex = loanData.installments.findIndex(i => i.number === installmentNumber);
+        if (installmentIndex === -1) throw new Error("Parcela não encontrada.");
+
+        const installment = loanData.installments[installmentIndex];
+        installment.paidAmount += paymentAmount;
+
+        if (installment.paidAmount >= installment.amount) {
+          installment.status = 'Pago';
+        } else {
+          installment.status = 'Parcialmente Pago';
+        }
+
+        // Add payment to loan history
+        const newPayment: Payment = {
+          id: nanoid(10),
+          loanId,
+          installmentNumber,
+          amount: paymentAmount,
+          paymentDate,
+          method: paymentMethod,
+          destinationAccountId,
+        };
+        loanData.payments.push(newPayment);
+
+        // Update overall loan status
+        const allPaid = loanData.installments.every(i => i.status === 'Pago');
+        if (allPaid) {
+          loanData.status = 'Quitado';
+        }
+
+        transaction.update(loanRef, {
+          installments: loanData.installments,
+          payments: loanData.payments,
+          status: loanData.status,
+        });
+
+        // Credit destination account
+        const accountRef = doc(firestore, 'accounts', destinationAccountId);
+        const accountDoc = await transaction.get(accountRef);
+        if (!accountDoc.exists()) throw new Error("Conta de destino não encontrada.");
+
+        const accountData = accountDoc.data() as Account;
+        const newBalance = accountData.balance + paymentAmount;
+        const paymentTransaction: Transaction = {
+          id: nanoid(10),
+          date: paymentDate,
+          description: `Pagamento recebido de ${loanData.borrowerName} (Parcela #${installmentNumber})`,
+          amount: paymentAmount,
+          type: 'Receita',
+          category: 'Recebimento Empréstimo',
+          referenceId: loanId,
+        };
+
+        transaction.update(accountRef, {
+            balance: newBalance,
+            transactions: arrayUnion(paymentTransaction),
+        });
+      });
+    } catch (err: any) {
+        console.error("Erro ao registrar pagamento:", err);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `loans/${loanId} ou accounts/${destinationAccountId}`,
+            operation: 'update',
+        }, err));
+    }
   };
   
-    const seedDatabase = async () => {
+  const seedDatabase = async () => {
     if (!firestore) return;
     const batch = writeBatch(firestore);
+
+    // Clear existing data
+    const collections = ['clients', 'accounts', 'loans'];
+    for (const coll of collections) {
+      const snapshot = await getDocs(collection(firestore, coll));
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    }
 
     // 1. Seed Accounts (2)
     const accountIds = ['nubank', 'itau'];
     const accountNames = ['Nubank', 'Itaú'];
-    accountIds.forEach((id, index) => {
-      const accountRef = doc(firestore, 'accounts', id);
-      batch.set(accountRef, {
-        id,
-        name: accountNames[index],
-        balance: Math.random() * 20000 + 5000,
-        transactions: [],
-      });
+    const seededAccounts = accountIds.map((id, index) => {
+        const accountRef = doc(firestore, 'accounts', id);
+        const data = {
+            id,
+            name: accountNames[index],
+            balance: Math.random() * 20000 + 5000,
+            transactions: [],
+        };
+        batch.set(accountRef, data);
+        return data;
     });
-
+    
     // 2. Seed Clients (4)
-    const clientIds = Array.from({ length: 4 }, () => nanoid(10));
     const firstNames = ['Ana', 'Bruno', 'Carla', 'Daniel'];
     const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza'];
     
-    const clients = clientIds.map((id, index) => {
+    const seededClients = firstNames.map((_, index) => {
+        const clientRef = doc(collection(firestore, 'clients'));
         const client = {
-            id,
+            id: clientRef.id,
             name: `${firstNames[index]} ${lastNames[index]}`,
             cpf: `000.000.000-0${index}`,
             email: `${firstNames[index].toLowerCase()}.${lastNames[index].toLowerCase()}@example.com`,
             phone: `(11) 90000-000${index}`,
             address: `Rua Teste, ${index}, Bairro Exemplo`,
         };
-        const clientRef = doc(firestore, 'clients', id);
         batch.set(clientRef, client);
         return client;
     });
 
     // 3. Seed Loans (10)
     for (let i = 0; i < 10; i++) {
-        const loanId = nanoid(12);
-        const randomClient = clients[Math.floor(Math.random() * clients.length)];
-        const randomAccount = accountIds[Math.floor(Math.random() * accountIds.length)];
+        const loanRef = doc(collection(firestore, 'loans'));
+        const randomClient = seededClients[Math.floor(Math.random() * seededClients.length)];
+        const randomAccount = seededAccounts[Math.floor(Math.random() * seededAccounts.length)];
         
         const amount = Math.floor(Math.random() * 9000) + 1000;
         const interestRate = parseFloat((Math.random() * 5 + 1).toFixed(2));
@@ -185,12 +442,11 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             };
         });
         
-        const loanRef = doc(firestore, 'loans', loanId);
         batch.set(loanRef, {
-            id: loanId,
+            id: loanRef.id,
             borrowerName: randomClient.name,
             clientId: randomClient.id,
-            accountId: randomAccount,
+            accountId: randomAccount.id,
             amount,
             interestRate,
             startDate,
@@ -200,7 +456,14 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         });
     }
 
-    await batch.commit();
+    try {
+        await batch.commit();
+    } catch(err) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'batch write',
+          operation: 'write',
+        }, err));
+    }
   };
 
   const value = {
