@@ -292,30 +292,47 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     
     try {
       await runTransaction(firestore, async (transaction) => {
+        // 1. READ all documents first
         const loanRef = doc(firestore, 'loans', loanId);
+        const accountRef = doc(firestore, 'accounts', destinationAccountId);
+        
         const loanDoc = await transaction.get(loanRef);
         if (!loanDoc.exists()) throw new Error("Empréstimo não encontrado.");
         
-        const loanData = loanDoc.data() as Loan;
+        const accountDoc = await transaction.get(accountRef);
+        if (!accountDoc.exists()) throw new Error("Conta de destino não encontrada.");
 
-        // Update installment
+        // 2. PREPARE changes on copies of data, not direct mutation
+        const loanData = loanDoc.data() as Loan;
+        const accountData = accountDoc.data() as Account;
+        
+        // Find the correct installment
         const installmentIndex = loanData.installments.findIndex(i => i.number === installmentNumber);
         if (installmentIndex === -1) throw new Error("Parcela não encontrada.");
 
-        const installment = loanData.installments[installmentIndex];
-        installment.paidAmount += paymentAmount;
+        const installmentToUpdate = loanData.installments[installmentIndex];
 
-        if (installment.paidAmount >= installment.amount) {
-          installment.status = 'Pago';
-        } else {
-          installment.status = 'Parcialmente Pago';
+        // Create a new updated installment object
+        const newPaidAmount = installmentToUpdate.paidAmount + paymentAmount;
+        let newStatus = installmentToUpdate.status;
+        if (newPaidAmount >= installmentToUpdate.amount) {
+          newStatus = 'Pago';
+        } else if (newPaidAmount > 0) {
+          newStatus = 'Parcialmente Pago';
         }
+
+        const updatedInstallment = {
+            ...installmentToUpdate,
+            paidAmount: newPaidAmount,
+            status: newStatus
+        };
         
-        const updatedInstallments = [...loanData.installments];
-        updatedInstallments[installmentIndex] = installment;
-
-
-        // Add payment to loan history
+        // Create new installments array
+        const updatedInstallments = loanData.installments.map(inst => 
+            inst.number === installmentNumber ? updatedInstallment : inst
+        );
+        
+        // Create new payment object and updated payments array
         const newPayment: Payment = {
           id: nanoid(10),
           loanId,
@@ -327,24 +344,11 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         };
         const updatedPayments = [...loanData.payments, newPayment];
 
-        // Update overall loan status
+        // Check overall loan status
         const allPaid = updatedInstallments.every(i => i.status === 'Pago');
-        if (allPaid) {
-          loanData.status = 'Quitado';
-        }
+        const newLoanStatus = allPaid ? 'Quitado' : loanData.status;
 
-        transaction.update(loanRef, {
-          installments: updatedInstallments,
-          payments: updatedPayments,
-          status: loanData.status,
-        });
-
-        // Credit destination account
-        const accountRef = doc(firestore, 'accounts', destinationAccountId);
-        const accountDoc = await transaction.get(accountRef);
-        if (!accountDoc.exists()) throw new Error("Conta de destino não encontrada.");
-
-        const accountData = accountDoc.data() as Account;
+        // Prepare account updates
         const newBalance = accountData.balance + paymentAmount;
         const paymentTransaction: Transaction = {
           id: nanoid(10),
@@ -355,6 +359,13 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           category: 'Recebimento Empréstimo',
           referenceId: loanId,
         };
+
+        // 3. WRITE all changes at the end
+        transaction.update(loanRef, {
+          installments: updatedInstallments,
+          payments: updatedPayments,
+          status: newLoanStatus,
+        });
 
         transaction.update(accountRef, {
             balance: newBalance,
