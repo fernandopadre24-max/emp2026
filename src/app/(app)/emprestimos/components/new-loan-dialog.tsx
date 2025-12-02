@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency, formatCPF, formatPhone } from '@/lib/utils';
+import { formatCurrency, formatCPF, formatPhone, validateCPF } from '@/lib/utils';
 import type { Loan, Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
 import { Switch } from '@/components/ui/switch';
@@ -42,6 +42,7 @@ const formSchema = z.object({
   borrowerCpf: z.string().optional(),
   borrowerPhone: z.string().optional(),
   borrowerAddress: z.string().optional(),
+  email: z.string().email({ message: 'Email inválido.' }).optional().or(z.literal('')),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -74,7 +75,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   const refinedSchema = formSchema.superRefine((data, ctx) => {
     if (data.isNewClient) {
         if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
-        if (!data.borrowerCpf || data.borrowerCpf.replace(/\D/g, '').length !== 11) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF deve ter 11 dígitos.", path: ["borrowerCpf"] });
+        if (!data.borrowerCpf || !validateCPF(data.borrowerCpf)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF informado é inválido.", path: ["borrowerCpf"] });
     } else {
         if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
     }
@@ -98,6 +99,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
       borrowerCpf: '',
       borrowerPhone: '',
       borrowerAddress: '',
+      email: '',
       accountId: '',
       amount: 1000,
       installments: 12,
@@ -115,9 +117,15 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   React.useEffect(() => {
     if (isOpen) {
         if (isEditMode && loanToEdit) {
+            const clientToEdit = clients.find(c => c.id === loanToEdit.clientId);
             form.reset({
                 isNewClient: false,
                 clientId: loanToEdit.clientId,
+                borrowerName: clientToEdit?.name,
+                borrowerCpf: clientToEdit?.cpf,
+                borrowerPhone: clientToEdit?.phone,
+                borrowerAddress: clientToEdit?.address,
+                email: clientToEdit?.email,
                 accountId: loanToEdit.accountId,
                 amount: loanToEdit.amount,
                 installments: loanToEdit.installments.length,
@@ -130,7 +138,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
             form.reset(defaultFormValues);
         }
     }
-  }, [isOpen, isEditMode, loanToEdit, form]);
+  }, [isOpen, isEditMode, loanToEdit, form, clients]);
 
   const isNewClient = form.watch('isNewClient');
 
@@ -225,6 +233,19 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                             )}
                         />
                     </div>
+                     <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email (Opcional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="cliente@email.com" {...field} value={field.value || ''}/>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                      <FormField
                         control={form.control}
                         name="borrowerAddress"

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
-import type { NewLoanFormValues } from '@/app/(app)/emprestimos/novo/page';
+import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
 import type { NewTransactionFormValues } from '@/app/(app)/contas/components/new-transaction-dialog';
 import { User as UserIcon, Library, Wallet } from 'lucide-react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
@@ -180,7 +180,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             const newClientRef = doc(collection(firestore, 'clients'));
             clientId = newClientRef.id;
             borrowerName = values.borrowerName;
-            const newClientData: Client = { 
+            const newClientData: Omit<Client, 'avatar'> = { 
                 id: clientId,
                 name: values.borrowerName,
                 cpf: values.borrowerCpf || '',

@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { List, AlertTriangle } from 'lucide-react';
 import { useFinancialData } from '@/context/financial-context';
 import Link from 'next/link';
-import { NewLoanFormValues } from './novo/page';
+import { NewLoanFormValues } from './components/new-loan-dialog';
 import { AmortizationDialog } from './components/amortization-dialog';
 import {
   Collapsible,
@@ -94,6 +94,9 @@ export default function EmprestimosPage() {
   const handleConfirmLoanDialog = (values: NewLoanFormValues, id?: string) => {
     if (id) {
         updateLoan(values, id);
+    } else {
+        // In the full page form, loan creation is handled there.
+        // This is primarily for editing from the list view.
     }
   }
   
