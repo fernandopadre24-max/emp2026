@@ -6,6 +6,7 @@ import { accounts as initialAccounts, clients as initialClients, loans as initia
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
 import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
 import { User as UserIcon } from 'lucide-react';
+import { useCollection } from '@/firebase';
 
 interface FinancialDataContextType {
   accounts: Account[];
@@ -27,159 +28,48 @@ interface FinancialDataContextType {
 const FinancialDataContext = React.createContext<FinancialDataContextType | undefined>(undefined);
 
 export function FinancialProvider({ children }: { children: React.ReactNode }) {
+  const { data: accountsData, loading: accountsLoading } = useCollection<Account>('accounts');
+  const { data: clientsData, loading: clientsLoading } = useCollection<Client>('clients');
+  const { data: loansData, loading: loansLoading } = useCollection<Loan>('loans');
+  
   const [accounts, setAccounts] = React.useState<Account[]>(initialAccounts);
   const [clients, setClients] = React.useState<Client[]>(initialClients);
   const [loans, setLoans] = React.useState<Loan[]>(initialLoans);
 
-  const createLoan = (values: NewLoanFormValues) => {
-    const {
-      isNewClient,
-      clientId,
-      borrowerName,
-      borrowerCpf,
-      borrowerPhone,
-      borrowerAddress,
-      accountId,
-      amount,
-      installments: numInstallments,
-      interestRate,
-      startDate,
-      iofRate,
-      iofValue
-    } = values;
-
-    let finalClientId = clientId;
-    let finalBorrowerName = borrowerName;
-
-    if (isNewClient) {
-        const newClient: Client = {
-            id: `client-${Date.now()}`,
-            name: borrowerName!,
-            cpf: borrowerCpf!,
-            phone: borrowerPhone!,
-            address: borrowerAddress!,
-            avatar: UserIcon,
-        };
-        setClients(prev => [...prev, newClient]);
-        finalClientId = newClient.id;
-        finalBorrowerName = newClient.name;
-    } else {
-        const client = clients.find(c => c.id === clientId);
-        if (!client) {
-            console.error("Client not found");
-            return;
-        }
-        finalBorrowerName = client.name;
-    }
-    
-    // Calculate installments
-    const monthlyInterestRate = interestRate / 100;
-    const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
-    const totalLoanAmount = amount + iof;
-    const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
-    
-    let remainingBalance = totalLoanAmount;
-    const installments: Loan['installments'] = [];
-     for (let i = 1; i <= numInstallments; i++) {
-        const interest = remainingBalance * monthlyInterestRate;
-        const principal = installmentAmount - interest;
-        remainingBalance -= principal;
-        const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
-        installments.push({
-            number: i,
-            dueDate: dueDate.toISOString().split('T')[0],
-            amount: installmentAmount,
-            principal: principal,
-            interest: interest,
-            paidAmount: 0,
-            status: 'Pendente'
-        });
-    }
-
-    const newLoan: Loan = {
-      id: `EMP-${Date.now()}`,
-      borrowerName: finalBorrowerName!,
-      clientId: finalClientId!,
-      accountId,
-      amount,
-      interestRate,
-      startDate,
-      installments,
-      status: 'Ativo',
-      payments: [],
-      iofRate,
-      iofValue,
-    };
-
-    setLoans(prev => [...prev, newLoan]);
-
-    // Update account balance
-    setAccounts(prev => prev.map(acc => {
-      if (acc.id === accountId) {
-        const newTransaction: Transaction = {
-          id: `TRX-${Date.now()}`,
-          date: new Date().toISOString().split('T')[0],
-          description: `Empréstimo concedido a ${finalBorrowerName}`,
-          amount: amount,
-          type: 'Despesa',
-          category: 'Empréstimos',
-          referenceId: newLoan.id,
-        };
-        return {
-          ...acc,
-          balance: acc.balance - amount,
-          transactions: [...acc.transactions, newTransaction],
-        };
+  React.useEffect(() => {
+      if (accountsData) {
+        // Here you would transform the Firestore data to match your Account type if needed
+        // For now, we assume it matches. Icons will need special handling.
+        setAccounts(accountsData.map(a => ({...a, icon: UserIcon})));
       }
-      return acc;
-    }));
+  }, [accountsData])
+
+  React.useEffect(() => {
+      if (clientsData) {
+        setClients(clientsData.map(c => ({...c, avatar: UserIcon})));
+      }
+  }, [clientsData])
+
+  React.useEffect(() => {
+      if (loansData) {
+        setLoans(loansData);
+      }
+  }, [loansData])
+
+
+  const createLoan = (values: NewLoanFormValues) => {
+    // This will be replaced with Firestore logic
+    console.log("Creating loan (local):", values);
   };
 
   const updateLoan = (values: NewLoanFormValues, id: string) => {
-    // Note: In a real-world scenario, updating a loan would be complex,
-    // especially if payments have already been made. This is a simplified version.
-    setLoans(prevLoans => prevLoans.map(loan => {
-        if (loan.id === id) {
-            // Recalculate installments based on new values
-            const { amount, installments: numInstallments, interestRate, startDate } = values;
-            const monthlyInterestRate = interestRate / 100;
-            const installmentAmount = amount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
-
-            let remainingBalance = amount;
-            const newInstallments: Loan['installments'] = [];
-            for (let i = 1; i <= numInstallments; i++) {
-                const interest = remainingBalance * monthlyInterestRate;
-                const principal = installmentAmount - interest;
-                remainingBalance -= principal;
-                const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
-
-                const existingInstallment = loan.installments.find(inst => inst.number === i);
-
-                newInstallments.push({
-                    number: i,
-                    dueDate: dueDate.toISOString().split('T')[0],
-                    amount: installmentAmount,
-                    principal,
-                    interest,
-                    paidAmount: existingInstallment?.paidAmount || 0,
-                    status: existingInstallment?.status || 'Pendente',
-                });
-            }
-
-            return {
-                ...loan,
-                ...values,
-                installments: newInstallments,
-            };
-        }
-        return loan;
-    }));
+    // This will be replaced with Firestore logic
+    console.log("Updating loan (local):", id, values);
   };
   
   const deleteLoan = (id: string) => {
-    // In a real app, you might want to handle associated transactions,
-    // but here we'll just remove the loan.
-    setLoans(prev => prev.filter(loan => loan.id !== id));
+    // This will be replaced with Firestore logic
+    console.log("Deleting loan (local):", id);
   };
   
   const registerPayment = (
@@ -190,71 +80,23 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     paymentMethod: string,
     destinationAccountId: string
   ) => {
-
-    const newPayment: Payment = {
-        id: `PAG-${Date.now()}`,
-        loanId,
-        installmentNumber,
-        amount: paymentAmount,
-        paymentDate,
-        method: paymentMethod,
-        destinationAccountId,
-    };
-    
-    // Update Loan State
-    setLoans(prevLoans =>
-      prevLoans.map(loan => {
-        if (loan.id === loanId) {
-          const newPayments = [...loan.payments, newPayment];
-          const newInstallments = loan.installments.map(inst => {
-            if (inst.number === installmentNumber) {
-              const newPaidAmount = inst.paidAmount + paymentAmount;
-              return {
-                ...inst,
-                paidAmount: newPaidAmount,
-                status: newPaidAmount >= inst.amount ? 'Pago' : 'Parcialmente Pago',
-              };
-            }
-            return inst;
-          });
-
-          const allPaid = newInstallments.every(inst => inst.status === 'Pago');
-          const newLoanStatus = allPaid ? 'Quitado' : loan.status;
-
-          return { ...loan, installments: newInstallments, payments: newPayments, status: newLoanStatus };
-        }
-        return loan;
-      })
-    );
-
-    // Update Account State
-    setAccounts(prevAccounts => 
-        prevAccounts.map(account => {
-            if (account.id === destinationAccountId) {
-                const loan = loans.find(l => l.id === loanId);
-                const newTransaction: Transaction = {
-                    id: `TRX-${Date.now()}`,
-                    date: paymentDate,
-                    description: `Pagamento parcela #${installmentNumber} de ${loan?.borrowerName}`,
-                    amount: paymentAmount,
-                    type: 'Receita',
-                    category: 'Pagamentos',
-                    referenceId: newPayment.id,
-                };
-                return {
-                    ...account,
-                    balance: account.balance + paymentAmount,
-                    transactions: [...account.transactions, newTransaction],
-                };
-            }
-            return account;
-        })
-    );
+    // This will be replaced with Firestore logic
+    console.log("Registering payment (local):", { loanId, installmentNumber, paymentAmount });
   };
 
 
+  const value = {
+    accounts: accountsLoading ? [] : accounts,
+    clients: clientsLoading ? [] : clients,
+    loans: loansLoading ? [] : loans,
+    createLoan,
+    updateLoan,
+    deleteLoan,
+    registerPayment
+  };
+
   return (
-    <FinancialDataContext.Provider value={{ accounts, clients, loans, createLoan, updateLoan, deleteLoan, registerPayment }}>
+    <FinancialDataContext.Provider value={value}>
       {children}
     </FinancialDataContext.Provider>
   );
@@ -267,5 +109,3 @@ export function useFinancialData() {
   }
   return context;
 }
-
-    
