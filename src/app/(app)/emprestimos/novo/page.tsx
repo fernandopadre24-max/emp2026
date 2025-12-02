@@ -144,60 +144,78 @@ export default function NewLoanPage() {
       setSimulation(null);
       return;
     }
-
-    const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse({ amount, installments, interestRate, startDate });
-    
+  
+    const validationResult = formSchema
+      .pick({
+        amount: true,
+        installments: true,
+        interestRate: true,
+        startDate: true,
+      })
+      .safeParse({ amount, installments, interestRate, startDate });
+  
     if (!validationResult.success || !startDate) {
       setSimulation(null);
       return;
     }
-
+  
     const monthlyInterestRate = interestRate / 100;
     const currentIof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
     const totalLoanAmount = amount + currentIof;
-
+  
     if (monthlyInterestRate <= 0 || installments <= 0) {
       setSimulation(null);
       return;
     }
-
-    const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
-
+  
+    // PMT = PV * [i * (1+i)^n] / [(1+i)^n - 1]
+    const installmentAmount =
+      totalLoanAmount *
+      (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) /
+      (Math.pow(1 + monthlyInterestRate, installments) - 1);
+  
     if (isNaN(installmentAmount) || !isFinite(installmentAmount)) {
-        setSimulation(null);
-        return;
+      setSimulation(null);
+      return;
     }
-
+  
     let remainingBalance = totalLoanAmount;
     const simulatedInstallments: SimulatedInstallment[] = [];
-    let totalInterest = 0;
-
+    let totalInterestPaid = 0;
+  
     for (let i = 1; i <= installments; i++) {
-        const interest = remainingBalance * monthlyInterestRate;
-        const principal = installmentAmount - interest;
-        remainingBalance -= principal;
-
-        const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
-        
-        totalInterest += interest;
-
-        simulatedInstallments.push({
-            number: i,
-            dueDate: dueDate.toLocaleDateString('pt-BR'),
-            amount: installmentAmount,
-            principal: principal,
-            interest: interest,
-        });
+      const interestPayment = remainingBalance * monthlyInterestRate;
+      const principalPayment = installmentAmount - interestPayment;
+      remainingBalance -= principalPayment;
+      totalInterestPaid += interestPayment;
+  
+      const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
+  
+      simulatedInstallments.push({
+        number: i,
+        dueDate: dueDate.toLocaleDateString('pt-BR'),
+        amount: installmentAmount,
+        principal: principalPayment,
+        interest: interestPayment,
+      });
     }
-    
-    const totalAmount = totalLoanAmount + totalInterest;
-
+  
+    const totalAmountPaid = totalLoanAmount + totalInterestPaid;
+  
     setSimulation({
       installments: simulatedInstallments,
-      totalAmount: totalAmount,
-      totalInterest: totalInterest,
+      totalAmount: totalAmountPaid,
+      totalInterest: totalInterestPaid,
     });
-  }, [amount, installments, interestRate, startDate, iofRate, iofValue, form, isSimulationEnabled]);
+  }, [
+    amount,
+    installments,
+    interestRate,
+    startDate,
+    iofRate,
+    iofValue,
+    isSimulationEnabled,
+  ]);
 
 
   async function onSubmit(values: NewLoanFormValues) {
@@ -259,9 +277,9 @@ export default function NewLoanPage() {
                               checked={field.value}
                               onCheckedChange={(checked) => {
                                 field.onChange(checked);
-                                form.setValue('clientId', '', { shouldValidate: true });
-                                form.setValue('borrowerName', '', { shouldValidate: true });
-                                form.setValue('borrowerCpf', '', { shouldValidate: true });
+                                form.setValue('clientId', undefined, { shouldValidate: true });
+                                form.setValue('borrowerName', undefined, { shouldValidate: true });
+                                form.setValue('borrowerCpf', undefined, { shouldValidate: true });
                               }}
                             />
                         </FormControl>
