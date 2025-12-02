@@ -130,11 +130,10 @@ export default function NewLoanPage() {
     mode: 'onChange',
   });
 
-  const watchedValues = form.watch();
+  const { amount, installments, interestRate, startDate, iofRate, iofValue } = form.watch();
 
   React.useEffect(() => {
-    const { amount, installments, interestRate, startDate, iofRate, iofValue } = watchedValues;
-    const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse(watchedValues);
+    const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse({ amount, installments, interestRate, startDate });
     
     if (!validationResult.success || !startDate) {
       setSimulation(null);
@@ -142,8 +141,8 @@ export default function NewLoanPage() {
     }
 
     const monthlyInterestRate = interestRate / 100;
-    const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
-    const totalLoanAmount = amount + iof;
+    const currentIof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
+    const totalLoanAmount = amount + currentIof;
 
     if (monthlyInterestRate <= 0 || installments <= 0) {
       setSimulation(null);
@@ -176,12 +175,15 @@ export default function NewLoanPage() {
         });
     }
     
+    const totalPaid = installmentAmount * installments;
+    const totalInterest = totalPaid - totalLoanAmount;
+
     setSimulation({
       installments: simulatedInstallments,
-      totalAmount: installmentAmount * installments,
-      totalInterest: (installmentAmount * installments) - amount,
+      totalAmount: totalPaid,
+      totalInterest: totalInterest,
     });
-  }, [watchedValues.amount, watchedValues.installments, watchedValues.interestRate, watchedValues.startDate, watchedValues.iofRate, watchedValues.iofValue]);
+  }, [amount, installments, interestRate, startDate, iofRate, iofValue]);
 
 
   async function onSubmit(values: NewLoanFormValues) {
@@ -241,7 +243,12 @@ export default function NewLoanPage() {
                         <FormControl>
                             <Switch
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked);
+                                form.setValue('clientId', '', { shouldValidate: true });
+                                form.setValue('borrowerName', '', { shouldValidate: true });
+                                form.setValue('borrowerCpf', '', { shouldValidate: true });
+                              }}
                             />
                         </FormControl>
                         </FormItem>
