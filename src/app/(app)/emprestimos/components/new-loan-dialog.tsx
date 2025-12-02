@@ -29,34 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
-import { add } from 'date-fns';
 import type { Loan, Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-
-type SimulatedInstallment = {
-  number: number;
-  dueDate: string;
-  amount: number;
-  principal: number;
-  interest: number;
-};
-
-type SimulationResult = {
-  installments: SimulatedInstallment[];
-  totalAmount: number;
-  totalInterest: number;
-};
 
 const formSchema = z.object({
   isNewClient: z.boolean().default(false),
@@ -91,16 +68,13 @@ interface NewLoanDialogProps {
 export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: NewLoanDialogProps) {
   const { toast } = useToast();
   const { accounts, clients } = useFinancialData();
-  const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
-
+  
   const isEditMode = !!loanToEdit;
   
   const refinedSchema = formSchema.superRefine((data, ctx) => {
     if (data.isNewClient) {
         if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
         if (!data.borrowerCpf) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF é obrigatório.", path: ["borrowerCpf"] });
-        if (!data.borrowerPhone) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O telefone é obrigatório.", path: ["borrowerPhone"] });
-        if (!data.borrowerAddress) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O endereço é obrigatório.", path: ["borrowerAddress"] });
     } else {
         if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
     }
@@ -155,56 +129,10 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
         } else {
             form.reset(defaultFormValues);
         }
-        setSimulation(null);
     }
   }, [isOpen, isEditMode, loanToEdit, form]);
 
   const isNewClient = form.watch('isNewClient');
-
-  function handleSimulate() {
-    const values = form.getValues();
-    const { amount, installments, interestRate, startDate } = values;
-
-    if (!amount || !installments || interestRate === undefined || !startDate) {
-        toast({
-            variant: "destructive",
-            title: "Erro de Validação",
-            description: "Por favor, preencha os campos de valor, parcelas, juros e data de início.",
-        });
-        return;
-    }
-
-    const monthlyInterestRate = interestRate / 100;
-    const iof = values.iofValue || (values.iofRate ? amount * (values.iofRate / 100) : 0);
-    const totalLoanAmount = amount + iof;
-
-    const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
-
-    let remainingBalance = totalLoanAmount;
-    const simulatedInstallments: SimulatedInstallment[] = [];
-
-    for (let i = 1; i <= installments; i++) {
-        const interest = remainingBalance * monthlyInterestRate;
-        const principal = installmentAmount - interest;
-        remainingBalance -= principal;
-
-        const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
-
-        simulatedInstallments.push({
-            number: i,
-            dueDate: dueDate.toLocaleDateString('pt-BR'),
-            amount: installmentAmount,
-            principal: principal,
-            interest: interest,
-        });
-    }
-    
-    setSimulation({
-      installments: simulatedInstallments,
-      totalAmount: installmentAmount * installments,
-      totalInterest: (installmentAmount * installments) - amount,
-    });
-  }
 
   function onSubmit(values: z.infer<typeof refinedSchema>) {
     const borrowerName = values.isNewClient ? values.borrowerName : clients.find(c => c.id === values.clientId)?.name;
@@ -227,7 +155,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
           <DialogTitle>{isEditMode ? 'Editar Empréstimo' : 'Novo Empréstimo'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4 max-h-[80vh] overflow-y-auto pr-4">
 
             <FormField
               control={form.control}
@@ -455,62 +383,9 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
               />
             </div>
 
-
-            {simulation && (
-                 <div className="space-y-4 rounded-lg border bg-background/50 p-4">
-                    <div className='flex items-center justify-between'>
-                        <h4 className="font-semibold">Resultado da Simulação</h4>
-                        <Button variant="ghost" size="sm" onClick={() => setSimulation(null)}>Limpar</Button>
-                    </div>
-                    
-                    <div className='grid grid-cols-3 gap-4 text-sm'>
-                        <div className="rounded-md border p-3">
-                            <p className="text-muted-foreground">Valor da Parcela</p>
-                            <p className="font-bold text-lg">{formatCurrency(simulation.installments[0]?.amount || 0)}</p>
-                        </div>
-                        <div className="rounded-md border p-3">
-                            <p className="text-muted-foreground">Total de Juros</p>
-                            <p className="font-bold text-lg">{formatCurrency(simulation.totalInterest)}</p>
-                        </div>
-                        <div className="rounded-md border p-3">
-                            <p className="text-muted-foreground">Custo Total</p>
-                            <p className="font-bold text-lg">{formatCurrency(simulation.totalAmount)}</p>
-                        </div>
-                    </div>
-                    
-                    <div className="max-h-[200px] overflow-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>#</TableHead>
-                                    <TableHead>Vencimento</TableHead>
-                                    <TableHead className="text-right">Principal</TableHead>
-                                    <TableHead className="text-right">Juros</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {simulation.installments.map((inst) => (
-                                    <TableRow key={inst.number}>
-                                        <TableCell>{inst.number}</TableCell>
-                                        <TableCell>{inst.dueDate}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(inst.principal)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(inst.interest)}</TableCell>
-                                        <TableCell className="text-right font-bold">{formatCurrency(inst.amount)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
-            )}
-
             <DialogFooter className="pt-6">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
-              </Button>
-              <Button type="button" variant="secondary" onClick={handleSimulate}>
-                Simular Empréstimo
               </Button>
               <Button type="submit">{isEditMode ? 'Salvar Alterações' : 'Criar Empréstimo'}</Button>
             </DialogFooter>
@@ -520,5 +395,3 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
     </Dialog>
   );
 }
-
-    

@@ -30,6 +30,7 @@ import { PaymentHistoryDialog } from './components/payment-history-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, List, AlertTriangle } from 'lucide-react';
 import { useFinancialData } from '@/context/financial-context';
+import Link from 'next/link';
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 type Installment = Loan['installments'][0];
@@ -142,12 +143,10 @@ export default function EmprestimosPage() {
 
   const { toast } = useToast();
 
-  const handleOpenNewLoan = () => {
-    setEditingLoan(null);
-    setNewLoanOpen(true);
-  };
-
   const handleOpenEditLoan = (loan: Loan) => {
+    // This part would need a new page for editing, similar to creating.
+    // For now, it could still use a dialog, or be redirected to an edit page.
+    // Let's keep the dialog for editing for now.
     setEditingLoan(loan);
     setNewLoanOpen(true);
   };
@@ -209,9 +208,11 @@ export default function EmprestimosPage() {
         title="Empréstimos"
         description="Gerencie todos os seus empréstimos aqui."
         action={
-          <Button onClick={handleOpenNewLoan} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Novo Empréstimo
+          <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Link href="/emprestimos/novo">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Novo Empréstimo
+            </Link>
           </Button>
         }
       />
@@ -353,8 +354,9 @@ export default function EmprestimosPage() {
         )}
       </div>
 
+      {/* The NewLoanDialog is kept for editing existing loans for now */}
       <NewLoanDialog
-        isOpen={isNewLoanOpen}
+        isOpen={isNewLoanOpen && !!editingLoan}
         onOpenChange={setNewLoanOpen}
         loanToEdit={editingLoan}
         onConfirm={editingLoan ? updateLoan : createLoan}
