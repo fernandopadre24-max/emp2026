@@ -63,7 +63,7 @@ const formSchema = z.object({
   borrowerCpf: z.string().optional(),
   borrowerPhone: z.string().optional(),
   borrowerAddress: z.string().optional(),
-  email: z.string().optional(),
+  email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }).optional().or(z.literal('')),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -130,7 +130,7 @@ export default function NewLoanPage() {
     mode: 'onChange',
   });
 
-  const { amount, installments, interestRate, startDate, iofRate, iofValue } = form.watch();
+  const { amount, installments, interestRate, startDate, iofRate, iofValue } = form.getValues();
 
   React.useEffect(() => {
     const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse({ amount, installments, interestRate, startDate });
@@ -158,11 +158,13 @@ export default function NewLoanPage() {
 
     let remainingBalance = totalLoanAmount;
     const simulatedInstallments: SimulatedInstallment[] = [];
+    let totalInterest = 0;
 
     for (let i = 1; i <= installments; i++) {
         const interest = remainingBalance * monthlyInterestRate;
         const principal = installmentAmount - interest;
         remainingBalance -= principal;
+        totalInterest += interest;
 
         const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
 
@@ -175,15 +177,14 @@ export default function NewLoanPage() {
         });
     }
     
-    const totalPaid = installmentAmount * installments;
-    const totalInterest = totalPaid - totalLoanAmount;
+    const totalAmount = amount + currentIof + totalInterest;
 
     setSimulation({
       installments: simulatedInstallments,
-      totalAmount: totalPaid,
+      totalAmount: totalAmount,
       totalInterest: totalInterest,
     });
-  }, [amount, installments, interestRate, startDate, iofRate, iofValue]);
+  }, [amount, installments, interestRate, startDate, iofRate, iofValue, form]);
 
 
   async function onSubmit(values: NewLoanFormValues) {
