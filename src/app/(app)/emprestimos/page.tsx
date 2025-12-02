@@ -50,19 +50,17 @@ const AmortizationPlan = ({
     const dueDateObj = new Date(dueDate + 'T00:00:00');
 
     if ((status === 'Pendente' || status === 'Parcialmente Pago') && dueDateObj < today) {
-      return { text: 'Atrasado', variant: 'bg-red-500/20 text-red-400' };
+      return { text: 'Atrasado', variant: 'destructive' };
     }
 
     switch (status) {
       case 'Pago':
-        return { text: 'Pago', variant: 'bg-green-500/20 text-green-400' };
+        return { text: 'Pago', variant: 'default' };
       case 'Parcialmente Pago':
-        return { text: 'Parcialmente Pago', variant: 'bg-yellow-500/20 text-yellow-400' };
-      case 'Atrasado':
-        return { text: 'Atrasado', variant: 'bg-red-500/20 text-red-400' };
+        return { text: 'Parcialmente Pago', variant: 'secondary' };
       case 'Pendente':
       default:
-        return { text: 'Pendente', variant: 'bg-gray-500/20 text-gray-400' };
+        return { text: 'Pendente', variant: 'outline' };
     }
   };
 
@@ -95,14 +93,14 @@ const AmortizationPlan = ({
                   <TableCell className="text-foreground">{formatCurrency(installment.interest)}</TableCell>
                   <TableCell className="text-green-400">{formatCurrency(installment.paidAmount)}</TableCell>
                   <TableCell>
-                    <Badge className={cn('text-xs', statusInfo.variant)}>
+                    <Badge variant={statusInfo.variant as any} className="text-xs">
                       {statusInfo.text}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <Button
                       variant="link"
-                      className="text-blue-500 p-0 h-auto disabled:text-muted-foreground disabled:no-underline"
+                      className="text-primary p-0 h-auto disabled:text-muted-foreground disabled:no-underline"
                       onClick={(e) => {
                         e.stopPropagation();
                         onPayClick(installment);
