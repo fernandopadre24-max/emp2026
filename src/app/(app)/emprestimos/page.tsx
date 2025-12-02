@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Banknote, Calendar, TrendingUp, Percent, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Banknote, Calendar, Percent, FileSpreadsheet, ChevronDown, TrendingUp, DollarSign } from 'lucide-react';
 import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentHistoryDialog } from './components/payment-history-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
-import { DollarSign, List, AlertTriangle } from 'lucide-react';
+import { List, AlertTriangle } from 'lucide-react';
 import { useFinancialData } from '@/context/financial-context';
 import Link from 'next/link';
 import { NewLoanFormValues } from './novo/page';
@@ -268,21 +268,16 @@ export default function EmprestimosPage() {
                         </CardHeader>
                     </CollapsibleTrigger>
                     <CardContent className="space-y-4 pt-4">
-                        <div>
-                        <p className="text-sm text-muted-foreground">Valor Principal</p>
-                        <p className="text-2xl font-bold">{formatCurrency(loan.amount)}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <p className="text-muted-foreground">Valor Principal</p>
+                                <p className="text-lg font-bold">{formatCurrency(loan.amount)}</p>
+                            </div>
                             <div className="space-y-1">
                                 <p className="text-muted-foreground flex items-center gap-1"><Percent className="w-3 h-3" /> Juros (mês)</p>
                                 <p className="font-semibold">{loan.interestRate}%</p>
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Custo Efetivo</p>
-                                <p className="font-semibold">{formatCurrency(totalInterest)}</p>
-                            </div>
-                            <div className="space-y-1">
+                             <div className="space-y-1">
                                 <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total a Pagar</p>
                                 <p className="font-semibold">{formatCurrency(totalAmountPayable)}</p>
                             </div>
