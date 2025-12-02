@@ -1,17 +1,16 @@
 'use client';
 
 import * as React from 'react';
-import { add } from 'date-fns';
-import { accounts as initialAccounts, clients as initialClients, loans as initialLoans } from '@/lib/data';
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
 import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, Library, Wallet } from 'lucide-react';
 import { useCollection } from '@/firebase';
 
 interface FinancialDataContextType {
   accounts: Account[];
   clients: Client[];
   loans: Loan[];
+  loading: boolean;
   createLoan: (values: NewLoanFormValues) => void;
   updateLoan: (values: NewLoanFormValues, id: string) => void;
   deleteLoan: (id: string) => void;
@@ -32,30 +31,23 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const { data: clientsData, loading: clientsLoading } = useCollection<Client>('clients');
   const { data: loansData, loading: loansLoading } = useCollection<Loan>('loans');
   
-  const [accounts, setAccounts] = React.useState<Account[]>(initialAccounts);
-  const [clients, setClients] = React.useState<Client[]>(initialClients);
-  const [loans, setLoans] = React.useState<Loan[]>(initialLoans);
+  const loading = accountsLoading || clientsLoading || loansLoading;
 
-  React.useEffect(() => {
-      if (accountsData) {
-        // Here you would transform the Firestore data to match your Account type if needed
-        // For now, we assume it matches. Icons will need special handling.
-        setAccounts(accountsData.map(a => ({...a, icon: UserIcon})));
-      }
-  }, [accountsData])
+  const accounts = React.useMemo(() => {
+    if (!accountsData) return [];
+    // Map icons based on ID or name, providing a default.
+    return accountsData.map(a => {
+        let icon = UserIcon;
+        if (a.id === 'investimentos') icon = Library;
+        if (a.id === 'nubank') icon = Wallet;
+        return {...a, icon };
+    });
+  }, [accountsData]);
 
-  React.useEffect(() => {
-      if (clientsData) {
-        setClients(clientsData.map(c => ({...c, avatar: UserIcon})));
-      }
-  }, [clientsData])
-
-  React.useEffect(() => {
-      if (loansData) {
-        setLoans(loansData);
-      }
-  }, [loansData])
-
+  const clients = React.useMemo(() => {
+    if (!clientsData) return [];
+    return clientsData.map(c => ({...c, avatar: UserIcon}));
+  }, [clientsData]);
 
   const createLoan = (values: NewLoanFormValues) => {
     // This will be replaced with Firestore logic
@@ -86,9 +78,10 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
 
   const value = {
-    accounts: accountsLoading ? [] : accounts,
-    clients: clientsLoading ? [] : clients,
-    loans: loansLoading ? [] : loans,
+    accounts,
+    clients,
+    loans: loansData || [],
+    loading,
     createLoan,
     updateLoan,
     deleteLoan,

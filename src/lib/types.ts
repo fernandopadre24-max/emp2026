@@ -6,7 +6,7 @@ export type Client = {
   cpf: string;
   phone: string;
   address: string;
-  avatar: LucideIcon;
+  avatar?: LucideIcon;
 };
 
 export type Loan = {
@@ -56,6 +56,6 @@ export type Account = {
   id: string;
   name: string;
   balance: number;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   transactions: Transaction[];
 }
