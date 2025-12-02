@@ -223,13 +223,12 @@ export default function EmprestimosPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="space-y-4">
         {filteredLoans.map(loan => {
           const totalInstallments = loan.installments.length;
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
           const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
           const totalAmountPayable = loan.installments.reduce((acc, i) => acc + i.amount, 0);
-          const totalInterest = totalAmountPayable - loan.amount - (loan.iofValue || 0);
 
           const nextInstallment = loan.installments.find(i => i.status === 'Pendente' || i.status === 'Parcialmente Pago');
 
@@ -269,16 +268,16 @@ export default function EmprestimosPage() {
                     </CollapsibleTrigger>
                     <CardContent className="space-y-4 pt-4">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                                <p className="text-muted-foreground">Valor Principal</p>
-                                <p className="text-lg font-bold">{formatCurrency(loan.amount)}</p>
+                            <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Principal</p>
+                                <p className="font-semibold">{formatCurrency(loan.amount)}</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-muted-foreground flex items-center gap-1"><Percent className="w-3 h-3" /> Juros (mês)</p>
                                 <p className="font-semibold">{loan.interestRate}%</p>
                             </div>
                              <div className="space-y-1">
-                                <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total a Pagar</p>
+                                <p className="text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Total a Pagar</p>
                                 <p className="font-semibold">{formatCurrency(totalAmountPayable)}</p>
                             </div>
                             {nextInstallment && (
@@ -299,8 +298,8 @@ export default function EmprestimosPage() {
                     </CardContent>
 
                     <CollapsibleContent>
-                        <div className="px-6 pb-4">
-                            <h4 className="mb-2 font-semibold">Parcelas</h4>
+                        <div className="px-6 pb-4 bg-muted/20">
+                            <h4 className="mb-2 pt-4 font-semibold text-sm">Parcelas</h4>
                             <div className="rounded-md border max-h-60 overflow-y-auto">
                                 <Table>
                                     <TableHeader>
