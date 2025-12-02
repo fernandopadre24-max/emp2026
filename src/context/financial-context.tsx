@@ -84,8 +84,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     const batch = writeBatch(firestore);
 
     // 1. Seed Accounts (2)
-    const accountIds = ['conta-corrente', 'poupanca'];
-    const accountNames = ['Conta Corrente', 'Poupança'];
+    const accountIds = ['nubank', 'itau'];
+    const accountNames = ['Nubank', 'Itau'];
     accountIds.forEach((id, index) => {
       const accountRef = doc(firestore, 'accounts', id);
       batch.set(accountRef, {
@@ -125,7 +125,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         const startDate = format(add(new Date(), { months: -Math.floor(Math.random() * 6) }), 'yyyy-MM-dd');
         
         const monthlyInterestRate = interestRate / 100;
-        const installmentAmount = amount * monthlyInterestRate / (1 - Math.pow(1 + monthlyInterestRate, -numInstallments));
+        const installmentAmount = (amount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -numInstallments));
 
         let remainingBalance = amount;
         const installments = Array.from({ length: numInstallments }).map((_, j) => {
