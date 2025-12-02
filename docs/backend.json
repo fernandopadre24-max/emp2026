@@ -1,0 +1,167 @@
+
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Represents a borrower in the system.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full name of the client."
+        },
+        "cpf": {
+          "type": "string",
+          "description": "The client's CPF document number."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The client's phone number."
+        },
+        "address": {
+          "type": "string",
+          "description": "The client's physical address."
+        }
+      },
+      "required": ["name", "cpf"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Represents a loan agreement.",
+      "type": "object",
+      "properties": {
+        "borrowerName": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "accountId": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "interestRate": {
+          "type": "number"
+        },
+        "iofRate": {
+          "type": "number"
+        },
+        "iofValue": {
+          "type": "number"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Ativo", "Atrasado", "Pago", "Pendente", "Quitado"]
+        }
+      },
+      "required": ["borrowerName", "clientId", "accountId", "amount", "interestRate", "startDate", "status"]
+    },
+    "Installment": {
+        "title": "Installment",
+        "description": "Represents a single installment of a loan.",
+        "type": "object",
+        "properties": {
+            "number": {"type": "number"},
+            "dueDate": {"type": "string", "format": "date"},
+            "amount": {"type": "number"},
+            "principal": {"type": "number"},
+            "interest": {"type": "number"},
+            "paidAmount": {"type": "number"},
+            "status": {"type": "string", "enum": ["Pendente", "Pago", "Parcialmente Pago", "Atrasado"]}
+        },
+        "required": ["number", "dueDate", "amount", "principal", "interest", "paidAmount", "status"]
+    },
+    "Payment": {
+        "title": "Payment",
+        "description": "Represents a payment made towards a loan installment.",
+        "type": "object",
+        "properties": {
+            "loanId": {"type": "string"},
+            "installmentNumber": {"type": "number"},
+            "amount": {"type": "number"},
+            "paymentDate": {"type": "string", "format": "date"},
+            "method": {"type": "string"},
+            "destinationAccountId": {"type": "string"}
+        },
+        "required": ["loanId", "installmentNumber", "amount", "paymentDate"]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "Represents a financial account.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "number"
+        }
+      },
+      "required": ["name", "balance"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Represents a transaction within an account.",
+      "type": "object",
+      "properties": {
+          "date": {"type": "string", "format": "date"},
+          "description": {"type": "string"},
+          "amount": {"type": "number"},
+          "type": {"type": "string", "enum": ["Receita", "Despesa"]},
+          "category": {"type": "string"}
+      },
+      "required": ["date", "description", "amount", "type", "category"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Stores client profile information."
+    },
+    "/loans/{loanId}": {
+      "schema": {
+          "allOf": [
+              { "$ref": "#/entities/Loan" },
+              {
+                  "properties": {
+                      "installments": {
+                          "type": "array",
+                          "items": { "$ref": "#/entities/Installment" }
+                      },
+                      "payments": {
+                          "type": "array",
+                          "items": { "$ref": "#/entities/Payment" }
+                      }
+                  }
+              }
+          ]
+      },
+      "description": "Stores loan agreements and their details."
+    },
+    "/accounts/{accountId}": {
+      "schema": {
+          "allOf": [
+              { "$ref": "#/entities/Account" },
+              {
+                  "properties": {
+                      "transactions": {
+                          "type": "array",
+                          "items": { "$ref": "#/entities/Transaction" }
+                      }
+                  }
+              }
+          ]
+      },
+      "description": "Stores financial accounts and their transactions."
+    }
+  }
+}
