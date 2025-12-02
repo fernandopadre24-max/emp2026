@@ -310,6 +310,10 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         } else {
           installment.status = 'Parcialmente Pago';
         }
+        
+        const updatedInstallments = [...loanData.installments];
+        updatedInstallments[installmentIndex] = installment;
+
 
         // Add payment to loan history
         const newPayment: Payment = {
@@ -321,17 +325,17 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           method: paymentMethod,
           destinationAccountId,
         };
-        loanData.payments.push(newPayment);
+        const updatedPayments = [...loanData.payments, newPayment];
 
         // Update overall loan status
-        const allPaid = loanData.installments.every(i => i.status === 'Pago');
+        const allPaid = updatedInstallments.every(i => i.status === 'Pago');
         if (allPaid) {
           loanData.status = 'Quitado';
         }
 
         transaction.update(loanRef, {
-          installments: loanData.installments,
-          payments: loanData.payments,
+          installments: updatedInstallments,
+          payments: updatedPayments,
           status: loanData.status,
         });
 
