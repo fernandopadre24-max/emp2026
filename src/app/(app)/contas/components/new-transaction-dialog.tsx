@@ -75,7 +75,7 @@ export function NewTransactionDialog({ isOpen, onOpenChange, defaultAccountId }:
             accountId: defaultAccountId || (accounts.length > 0 ? accounts[0].id : ''),
             date: format(new Date(), 'yyyy-MM-dd'),
             description: '',
-            amount: undefined,
+            amount: '' as any,
             type: 'Despesa',
             category: '',
         });
