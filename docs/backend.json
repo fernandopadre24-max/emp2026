@@ -134,37 +134,24 @@
     },
     "/loans/{loanId}": {
       "schema": {
-          "allOf": [
-              { "$ref": "#/entities/Loan" },
-              {
-                  "properties": {
-                      "installments": {
-                          "type": "array",
-                          "items": { "$ref": "#/entities/Installment" }
-                      },
-                      "payments": {
-                          "type": "array",
-                          "items": { "$ref": "#/entities/Payment" }
-                      }
-                  }
-              }
-          ]
+        "$ref": "#/entities/Loan"
       },
       "description": "Stores loan agreements and their details."
     },
     "/accounts/{accountId}": {
       "schema": {
-          "allOf": [
-              { "$ref": "#/entities/Account" },
-              {
-                  "properties": {
-                      "transactions": {
-                          "type": "array",
-                          "items": { "$ref": "#/entities/Transaction" }
-                      }
-                  }
+        "allOf": [
+          { "$ref": "#/entities/Account" },
+          {
+            "type": "object",
+            "properties": {
+              "transactions": {
+                "type": "array",
+                "items": { "$ref": "#/entities/Transaction" }
               }
-          ]
+            }
+          }
+        ]
       },
       "description": "Stores financial accounts and their transactions."
     }

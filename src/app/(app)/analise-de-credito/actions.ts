@@ -9,9 +9,18 @@ import type { Client, Loan } from '@/lib/types';
 
 
 if (getApps().length === 0) {
+  // This is a temporary workaround for a bug in the environment.
+  // In a real-world scenario, you would not parse the service account key like this.
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+    : undefined;
+
+  if (!serviceAccount) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set or is invalid.');
+  }
+
   initializeApp({
-    // @ts-ignore
-    credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!)),
+    credential: cert(serviceAccount),
     databaseURL: firebaseConfig.databaseURL,
     projectId: firebaseConfig.projectId,
   });
@@ -48,7 +57,16 @@ export async function runCreditAnalysis(
       // If client exists, gather more data
       const loansRef = db.collection('loans');
       const loansSnapshot = await loansRef.where('clientId', '==', foundClient.id).get();
-      const clientLoans = loansSnapshot.docs.map(doc => doc.data() as Loan);
+      
+      const clientLoans = loansSnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Ensure installments and payments are arrays
+        return {
+          ...data,
+          installments: data.installments || [],
+          payments: data.payments || [],
+        } as Loan;
+      });
 
       borrowerData = {
         profile: foundClient,
