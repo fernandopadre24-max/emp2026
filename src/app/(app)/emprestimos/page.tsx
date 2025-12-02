@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, List, AlertTriangle } from 'lucide-react';
 import { useFinancialData } from '@/context/financial-context';
 import Link from 'next/link';
+import { NewLoanFormValues } from './novo/page';
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 type Installment = Loan['installments'][0];
@@ -144,10 +145,12 @@ export default function EmprestimosPage() {
   const { toast } = useToast();
 
   const handleOpenEditLoan = (loan: Loan) => {
-    // This part would need a new page for editing, similar to creating.
-    // For now, it could still use a dialog, or be redirected to an edit page.
-    // Let's keep the dialog for editing for now.
     setEditingLoan(loan);
+    setNewLoanOpen(true);
+  };
+  
+  const handleOpenNewLoan = () => {
+    setEditingLoan(null);
     setNewLoanOpen(true);
   };
 
@@ -163,10 +166,10 @@ export default function EmprestimosPage() {
     setHistoryState({ loan, installment });
   };
 
-  const handleDeleteLoan = () => {
+  const handleDeleteLoan = async () => {
     if (!deletingLoanId) return;
     const loanToDelete = loans.find(l => l.id === deletingLoanId);
-    deleteLoan(deletingLoanId);
+    await deleteLoan(deletingLoanId);
     toast({
       title: "Empréstimo Excluído",
       description: `O empréstimo para ${loanToDelete?.borrowerName} foi removido.`,
@@ -185,6 +188,12 @@ export default function EmprestimosPage() {
     registerPayment(loanId, installmentNumber, paymentAmount, paymentDate, paymentMethod, destinationAccountId);
     setPaymentState(null); // Close dialog on success
   };
+
+  const handleConfirmLoanDialog = (values: NewLoanFormValues, id?: string) => {
+    if (id) {
+        updateLoan(values, id);
+    }
+  }
 
   const filteredLoans = React.useMemo(() => {
     if (activeFilter === 'Todos') return loans;
@@ -354,12 +363,14 @@ export default function EmprestimosPage() {
         )}
       </div>
 
-      {/* The NewLoanDialog is kept for editing existing loans for now */}
       <NewLoanDialog
-        isOpen={isNewLoanOpen && !!editingLoan}
-        onOpenChange={setNewLoanOpen}
+        isOpen={isNewLoanOpen}
+        onOpenChange={(isOpen) => {
+            if (!isOpen) setEditingLoan(null);
+            setNewLoanOpen(isOpen);
+        }}
         loanToEdit={editingLoan}
-        onConfirm={editingLoan ? updateLoan : createLoan}
+        onConfirm={handleConfirmLoanDialog}
       />
 
       <DeleteAlertDialog
@@ -387,3 +398,5 @@ export default function EmprestimosPage() {
     </div>
   );
 }
+
+    

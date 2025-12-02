@@ -63,7 +63,7 @@ const formSchema = z.object({
   borrowerCpf: z.string().optional(),
   borrowerPhone: z.string().optional(),
   borrowerAddress: z.string().optional(),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  email: z.string().optional(),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -124,33 +124,33 @@ export default function NewLoanPage() {
       iofValue: '' as any,
   };
 
-  const form = useForm<z.infer<typeof refinedSchema>>({
+  const form = useForm<NewLoanFormValues>({
     resolver: zodResolver(refinedSchema),
     defaultValues: defaultFormValues,
     mode: 'onChange',
   });
 
-  const { amount, installments, interestRate, startDate, iofRate, iofValue } = form.watch();
+  const watchedValues = form.watch();
 
   React.useEffect(() => {
-    const values = { amount, installments, interestRate, startDate, iofRate, iofValue };
-    const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse(values);
+    const { amount, installments, interestRate, startDate, iofRate, iofValue } = watchedValues;
+    const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse(watchedValues);
     
-    if (!validationResult.success || !values.startDate) {
+    if (!validationResult.success || !startDate) {
       setSimulation(null);
       return;
     }
 
-    const monthlyInterestRate = values.interestRate / 100;
-    const iof = values.iofValue || (values.iofRate ? values.amount * (values.iofRate / 100) : 0);
-    const totalLoanAmount = values.amount + iof;
+    const monthlyInterestRate = interestRate / 100;
+    const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
+    const totalLoanAmount = amount + iof;
 
-    if (monthlyInterestRate <= 0 || values.installments <= 0) {
+    if (monthlyInterestRate <= 0 || installments <= 0) {
       setSimulation(null);
       return;
     }
 
-    const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, values.installments)) / (Math.pow(1 + monthlyInterestRate, values.installments) - 1);
+    const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
 
     if (isNaN(installmentAmount) || !isFinite(installmentAmount)) {
         setSimulation(null);
@@ -160,12 +160,12 @@ export default function NewLoanPage() {
     let remainingBalance = totalLoanAmount;
     const simulatedInstallments: SimulatedInstallment[] = [];
 
-    for (let i = 1; i <= values.installments; i++) {
+    for (let i = 1; i <= installments; i++) {
         const interest = remainingBalance * monthlyInterestRate;
         const principal = installmentAmount - interest;
         remainingBalance -= principal;
 
-        const dueDate = add(new Date(`${values.startDate}T00:00:00`), { months: i });
+        const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
 
         simulatedInstallments.push({
             number: i,
@@ -178,13 +178,13 @@ export default function NewLoanPage() {
     
     setSimulation({
       installments: simulatedInstallments,
-      totalAmount: installmentAmount * values.installments,
-      totalInterest: (installmentAmount * values.installments) - values.amount,
+      totalAmount: installmentAmount * installments,
+      totalInterest: (installmentAmount * installments) - amount,
     });
-  }, [amount, installments, interestRate, startDate, iofRate, iofValue, formSchema]);
+  }, [watchedValues, formSchema]);
 
 
-  async function onSubmit(values: z.infer<typeof refinedSchema>) {
+  async function onSubmit(values: NewLoanFormValues) {
     setIsSubmitting(true);
     const borrowerName = values.isNewClient ? values.borrowerName : clients.find(c => c.id === values.clientId)?.name;
     
@@ -291,7 +291,7 @@ export default function NewLoanPage() {
                                     )}
                                 />
                             </div>
-                            <FormField
+                             <FormField
                                 control={form.control}
                                 name="email"
                                 render={({ field }) => (
@@ -543,3 +543,5 @@ export default function NewLoanPage() {
     </>
   );
 }
+
+    
