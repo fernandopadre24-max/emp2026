@@ -24,26 +24,27 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialData } from '@/context/financial-context';
+import type { Account } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(2, {
     message: 'O nome da conta deve ter pelo menos 2 caracteres.',
   }),
-  balance: z.coerce.number().min(0, {
-    message: 'O saldo inicial não pode ser negativo.',
-  }),
+  balance: z.coerce.number(),
 });
 
 export type NewAccountFormValues = z.infer<typeof formSchema>;
 
-interface NewAccountDialogProps {
+interface AccountDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  accountToEdit?: Account | null;
 }
 
-export function NewAccountDialog({ isOpen, onOpenChange }: NewAccountDialogProps) {
+export function AccountDialog({ isOpen, onOpenChange, accountToEdit }: AccountDialogProps) {
   const { toast } = useToast();
-  const { createAccount } = useFinancialData();
+  const { createAccount, updateAccount } = useFinancialData();
+  const isEditMode = !!accountToEdit;
 
   const form = useForm<NewAccountFormValues>({
     resolver: zodResolver(formSchema),
@@ -54,19 +55,37 @@ export function NewAccountDialog({ isOpen, onOpenChange }: NewAccountDialogProps
   });
   
   React.useEffect(() => {
-    if (!isOpen) {
-        form.reset();
+    if (isOpen) {
+      if (isEditMode && accountToEdit) {
+        form.reset({
+          name: accountToEdit.name || '',
+          balance: accountToEdit.balance || 0,
+        });
+      } else {
+        form.reset({
+          name: '',
+          balance: 0,
+        });
+      }
     }
-  }, [isOpen, form]);
+  }, [isOpen, isEditMode, accountToEdit, form]);
 
 
   function onSubmit(values: NewAccountFormValues) {
-    createAccount(values);
-    toast({
-      title: 'Conta Criada!',
-      description: `A conta "${values.name}" foi adicionada com sucesso.`,
-      className: 'bg-primary text-primary-foreground',
-    });
+    if (isEditMode && accountToEdit) {
+        updateAccount(accountToEdit.id, values);
+        toast({
+            title: 'Conta Atualizada!',
+            description: `A conta "${values.name}" foi atualizada com sucesso.`,
+        });
+    } else {
+        createAccount(values);
+        toast({
+          title: 'Conta Criada!',
+          description: `A conta "${values.name}" foi adicionada com sucesso.`,
+          className: 'bg-primary text-primary-foreground',
+        });
+    }
     onOpenChange(false);
   }
 
@@ -74,9 +93,9 @@ export function NewAccountDialog({ isOpen, onOpenChange }: NewAccountDialogProps
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground border-border">
         <DialogHeader>
-          <DialogTitle>Nova Conta</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Editar Conta' : 'Nova Conta'}</DialogTitle>
           <DialogDescription>
-            Crie uma nova conta para gerenciar suas finanças.
+            {isEditMode ? 'Altere as informações da conta abaixo.' : 'Crie uma nova conta para gerenciar suas finanças.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -99,11 +118,13 @@ export function NewAccountDialog({ isOpen, onOpenChange }: NewAccountDialogProps
               name="balance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Saldo Inicial (R$)</FormLabel>
+                  <FormLabel>Saldo {isEditMode ? '' : 'Inicial'} (R$)</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input type="number" {...field} disabled={isEditMode} />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage>
+                    {isEditMode ? "O saldo não pode ser editado diretamente. Realize transações para alterá-lo." : "O saldo inicial não pode ser negativo."}
+                  </FormMessage>
                 </FormItem>
               )}
             />
@@ -111,7 +132,7 @@ export function NewAccountDialog({ isOpen, onOpenChange }: NewAccountDialogProps
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Criar Conta</Button>
+              <Button type="submit">{isEditMode ? 'Salvar Alterações' : 'Criar Conta'}</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -32,6 +32,8 @@ interface FinancialDataContextType {
   ) => Promise<void>;
   seedDatabase: () => Promise<void>;
   createAccount: (values: NewAccountFormValues) => Promise<void>;
+  updateAccount: (id: string, values: NewAccountFormValues) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
   createClient: (values: NewClientFormValues) => Promise<void>;
   updateClient: (id: string, values: NewClientFormValues) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
@@ -77,6 +79,43 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         }, err));
     });
   }
+
+  const updateAccount = async (id: string, values: NewAccountFormValues) => {
+    if (!firestore) return;
+    const accountRef = doc(firestore, 'accounts', id);
+    // Balance cannot be edited directly, so we only update the name.
+    updateDoc(accountRef, { name: values.name }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `accounts/${id}`,
+            operation: 'update',
+            requestResourceData: { name: values.name },
+        }, err));
+    });
+    };
+
+    const deleteAccount = async (id: string) => {
+    if (!firestore || !loansData) return;
+    
+    const accountToDelete = accounts.find(acc => acc.id === id);
+    if (!accountToDelete) throw new Error("Conta não encontrada.");
+
+    if (accountToDelete.balance !== 0) {
+        throw new Error("Não é possível excluir uma conta com saldo diferente de zero.");
+    }
+    
+    const isAccountUsedInLoans = loansData.some(loan => loan.accountId === id || loan.payments.some(p => p.destinationAccountId === id));
+    if (isAccountUsedInLoans) {
+        throw new Error("Não é possível excluir uma conta associada a empréstimos existentes.");
+    }
+
+    const accountRef = doc(firestore, 'accounts', id);
+    deleteDoc(accountRef).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `accounts/${id}`,
+            operation: 'delete',
+        }, err));
+    });
+  };
   
   const createClient = async (values: NewClientFormValues) => {
     if (!firestore) return;
@@ -578,6 +617,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     registerPayment,
     seedDatabase,
     createAccount,
+    updateAccount,
+    deleteAccount,
     createClient,
     updateClient,
     deleteClient,

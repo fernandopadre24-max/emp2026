@@ -4,11 +4,11 @@ import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react';
+import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
-import { NewAccountDialog } from './components/new-account-dialog';
+import { AccountDialog } from './components/new-account-dialog';
 import { NewTransactionDialog } from './components/new-transaction-dialog';
 import {
   Collapsible,
@@ -24,12 +24,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import type { Account } from '@/lib/types';
+import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ContasPage() {
-  const { accounts, loading } = useFinancialData();
+  const { accounts, loading, deleteAccount } = useFinancialData();
   const [isNewAccountOpen, setNewAccountOpen] = React.useState(false);
+  const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
+  const [deletingAccount, setDeletingAccount] = React.useState<Account | null>(null);
   const [isNewTransactionOpen, setNewTransactionOpen] = React.useState(false);
   const [openCollapsibles, setOpenCollapsibles] = React.useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
   const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
   const totalIncome = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Receita').reduce((acc, t) => acc + t.amount, 0);
@@ -47,6 +53,40 @@ export default function ContasPage() {
     });
   };
 
+  const handleOpenNewAccount = () => {
+    setEditingAccount(null);
+    setNewAccountOpen(true);
+  };
+
+  const handleOpenEditAccount = (account: Account) => {
+    setEditingAccount(account);
+    setNewAccountOpen(true);
+  };
+
+  const handleOpenDeleteAccount = (account: Account) => {
+    setDeletingAccount(account);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletingAccount) return;
+
+    try {
+      await deleteAccount(deletingAccount.id);
+      toast({
+        title: 'Conta Excluída',
+        description: `A conta "${deletingAccount.name}" foi removida com sucesso.`,
+      });
+      setDeletingAccount(null);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Ação Bloqueada',
+        description: (error as Error).message,
+      });
+      setDeletingAccount(null);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -57,7 +97,7 @@ export default function ContasPage() {
                     <Banknote className="mr-2 h-4 w-4" />
                     Nova Transação
                 </Button>
-                <Button onClick={() => setNewAccountOpen(true)}>
+                <Button onClick={handleOpenNewAccount}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Nova Conta
                 </Button>
@@ -112,25 +152,25 @@ export default function ContasPage() {
                 <Collapsible key={account.id} asChild onOpenChange={() => toggleCollapsible(account.id)}>
                     <Card>
                         <CollapsibleTrigger asChild>
-                            <CardHeader className="cursor-pointer hover:bg-muted/50 rounded-t-lg">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-primary/10 p-3 rounded-full">
-                                            <account.icon className="w-6 h-6 text-primary" />
-                                        </div>
-                                        <div>
-                                            <CardTitle>{account.name}</CardTitle>
-                                            <p className="text-2xl font-bold">{formatCurrency(account.balance)}</p>
-                                        </div>
+                            <div className="p-6 cursor-pointer hover:bg-muted/50 rounded-t-lg flex justify-between items-start">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-primary/10 p-3 rounded-full">
+                                        <account.icon className="w-6 h-6 text-primary" />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", openCollapsibles.has(account.id) && "rotate-180")} />
+                                    <div>
+                                        <CardTitle>{account.name}</CardTitle>
+                                        <p className="text-2xl font-bold">{formatCurrency(account.balance)}</p>
                                     </div>
                                 </div>
-                            </CardHeader>
+                                <div className="flex items-center gap-2">
+                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={(e) => { e.stopPropagation(); handleOpenEditAccount(account);}}><Edit className="h-4 w-4" /></Button>
+                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleOpenDeleteAccount(account);}}><Trash2 className="h-4 w-4" /></Button>
+                                    <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", openCollapsibles.has(account.id) && "rotate-180")} />
+                                </div>
+                            </div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                            <CardContent className="pt-4">
+                            <CardContent className="pt-0">
                                 <h4 className="mb-2 font-semibold text-sm text-muted-foreground">Últimas Transações</h4>
                                 <div className="rounded-md border max-h-60 overflow-y-auto">
                                     <Table>
@@ -170,8 +210,15 @@ export default function ContasPage() {
         )}
       </div>
       
-      <NewAccountDialog isOpen={isNewAccountOpen} onOpenChange={setNewAccountOpen} />
+      <AccountDialog isOpen={isNewAccountOpen} onOpenChange={setNewAccountOpen} accountToEdit={editingAccount} />
       <NewTransactionDialog isOpen={isNewTransactionOpen} onOpenChange={setNewTransactionOpen} />
+      <DeleteAlertDialog
+            isOpen={!!deletingAccount}
+            onOpenChange={(isOpen) => !isOpen && setDeletingAccount(null)}
+            onConfirm={handleDeleteAccount}
+            title="Confirmar Exclusão"
+            description={`Tem certeza que deseja excluir a conta "${deletingAccount?.name}"? Esta ação não pode ser desfeita.`}
+        />
     </>
   );
 }
