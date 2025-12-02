@@ -113,8 +113,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         return client;
     });
 
-    // 3. Seed Loans (20)
-    for (let i = 0; i < 20; i++) {
+    // 3. Seed Loans (10)
+    for (let i = 0; i < 10; i++) {
         const loanId = nanoid(12);
         const randomClient = clients[Math.floor(Math.random() * clients.length)];
         const randomAccount = accountIds[Math.floor(Math.random() * accountIds.length)];
@@ -125,7 +125,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         const startDate = format(add(new Date(), { months: -Math.floor(Math.random() * 6) }), 'yyyy-MM-dd');
         
         const monthlyInterestRate = interestRate / 100;
-        const installmentAmount = (amount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -numInstallments));
+        const installmentAmount = amount * monthlyInterestRate / (1 - Math.pow(1 + monthlyInterestRate, -numInstallments));
 
         let remainingBalance = amount;
         const installments = Array.from({ length: numInstallments }).map((_, j) => {
