@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatCPF, formatPhone } from '@/lib/utils';
 import { add } from 'date-fns';
 import type { Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
@@ -92,7 +92,7 @@ export default function NewLoanPage() {
   const refinedSchema = formSchema.superRefine((data, ctx) => {
     if (data.isNewClient) {
         if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
-        if (!data.borrowerCpf) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF é obrigatório.", path: ["borrowerCpf"] });
+        if (!data.borrowerCpf || data.borrowerCpf.replace(/\D/g, '').length !== 11) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF deve ter 11 dígitos.", path: ["borrowerCpf"] });
     } else {
         if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
     }
@@ -163,32 +163,19 @@ export default function NewLoanPage() {
     const currentIof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
     const totalLoanAmount = amount + currentIof;
   
-    if (monthlyInterestRate <= 0) {
-      // Handle case with no interest
-      const installmentAmount = totalLoanAmount / installments;
-      const simulatedInstallments = Array.from({ length: installments }).map((_, i) => ({
-        number: i + 1,
-        dueDate: add(new Date(`${startDate}T00:00:00`), { months: i + 1 }).toLocaleDateString('pt-BR'),
-        amount: installmentAmount,
-        principal: installmentAmount,
-        interest: 0,
-      }));
-      setSimulation({
-        installments: simulatedInstallments,
-        totalAmount: totalLoanAmount,
-        totalInterest: 0,
-      });
-      return;
+    let installmentAmount: number;
+    if (monthlyInterestRate > 0) {
+        installmentAmount =
+        totalLoanAmount *
+        (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) /
+        (Math.pow(1 + monthlyInterestRate, installments) - 1);
+    } else {
+        installmentAmount = totalLoanAmount / installments;
     }
-  
-    const installmentAmount =
-      totalLoanAmount *
-      (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) /
-      (Math.pow(1 + monthlyInterestRate, installments) - 1);
-  
+    
     if (isNaN(installmentAmount) || !isFinite(installmentAmount)) {
-      setSimulation(null);
-      return;
+        setSimulation(null);
+        return;
     }
   
     let remainingBalance = totalLoanAmount;
@@ -196,22 +183,22 @@ export default function NewLoanPage() {
     const simulatedInstallments: SimulatedInstallment[] = [];
     
     for (let i = 1; i <= installments; i++) {
-      const interestPayment = remainingBalance * monthlyInterestRate;
-      const principalPayment = installmentAmount - interestPayment;
-      remainingBalance -= principalPayment;
-      totalInterestPaid += interestPayment;
-  
-      const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
-  
-      simulatedInstallments.push({
-        number: i,
-        dueDate: dueDate.toLocaleDateString('pt-BR'),
-        amount: installmentAmount,
-        principal: principalPayment,
-        interest: interestPayment,
-      });
+        const interestPayment = remainingBalance * monthlyInterestRate;
+        const principalPayment = installmentAmount - interestPayment;
+        remainingBalance -= principalPayment;
+        totalInterestPaid += interestPayment;
+
+        const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
+
+        simulatedInstallments.push({
+            number: i,
+            dueDate: dueDate.toLocaleDateString('pt-BR'),
+            amount: installmentAmount,
+            principal: principalPayment,
+            interest: interestPayment,
+        });
     }
-  
+
     const totalAmountPaid = installmentAmount * installments;
   
     setSimulation({
@@ -235,8 +222,14 @@ export default function NewLoanPage() {
     setIsSubmitting(true);
     const borrowerName = values.isNewClient ? values.borrowerName : clients.find(c => c.id === values.clientId)?.name;
     
+    const formattedValues = {
+        ...values,
+        borrowerCpf: values.borrowerCpf?.replace(/\D/g, ''),
+        borrowerPhone: values.borrowerPhone?.replace(/\D/g, ''),
+    }
+
     try {
-        await createLoan(values);
+        await createLoan(formattedValues);
         
         toast({
           title: 'Empréstimo Criado!',
@@ -323,7 +316,7 @@ export default function NewLoanPage() {
                                     <FormItem>
                                         <FormLabel>CPF</FormLabel>
                                         <FormControl>
-                                        <Input placeholder="000.000.000-00" {...field} value={field.value || ''} />
+                                        <Input placeholder="000.000.000-00" {...field} value={field.value || ''} onChange={(e) => field.onChange(formatCPF(e.target.value))} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -336,7 +329,7 @@ export default function NewLoanPage() {
                                     <FormItem>
                                         <FormLabel>Telefone</FormLabel>
                                         <FormControl>
-                                        <Input placeholder="(00) 90000-0000" {...field} value={field.value || ''} />
+                                        <Input placeholder="(00) 90000-0000" {...field} value={field.value || ''} onChange={(e) => field.onChange(formatPhone(e.target.value))} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

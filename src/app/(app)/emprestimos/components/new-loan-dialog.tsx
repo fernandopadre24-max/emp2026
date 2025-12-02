@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatCPF, formatPhone } from '@/lib/utils';
 import type { Loan, Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
 import { Switch } from '@/components/ui/switch';
@@ -74,7 +74,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   const refinedSchema = formSchema.superRefine((data, ctx) => {
     if (data.isNewClient) {
         if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
-        if (!data.borrowerCpf) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF é obrigatório.", path: ["borrowerCpf"] });
+        if (!data.borrowerCpf || data.borrowerCpf.replace(/\D/g, '').length !== 11) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF deve ter 11 dígitos.", path: ["borrowerCpf"] });
     } else {
         if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
     }
@@ -137,7 +137,13 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
   function onSubmit(values: z.infer<typeof refinedSchema>) {
     const borrowerName = values.isNewClient ? values.borrowerName : clients.find(c => c.id === values.clientId)?.name;
 
-    onConfirm(values, loanToEdit?.id);
+    const formattedValues = {
+        ...values,
+        borrowerCpf: values.borrowerCpf?.replace(/\D/g, ''),
+        borrowerPhone: values.borrowerPhone?.replace(/\D/g, ''),
+    }
+
+    onConfirm(formattedValues, loanToEdit?.id);
     
     toast({
       title: isEditMode ? 'Empréstimo Atualizado!' : 'Empréstimo Criado!',
@@ -199,7 +205,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                             <FormItem>
                                 <FormLabel>CPF</FormLabel>
                                 <FormControl>
-                                <Input placeholder="000.000.000-00" {...field} value={field.value || ''} />
+                                <Input placeholder="000.000.000-00" {...field} value={field.value || ''} onChange={(e) => field.onChange(formatCPF(e.target.value))} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -212,7 +218,7 @@ export function NewLoanDialog({ isOpen, onOpenChange, loanToEdit, onConfirm }: N
                             <FormItem>
                                 <FormLabel>Telefone</FormLabel>
                                 <FormControl>
-                                <Input placeholder="(00) 90000-0000" {...field} value={field.value || ''} />
+                                <Input placeholder="(00) 90000-0000" {...field} value={field.value || ''} onChange={(e) => field.onChange(formatPhone(e.target.value))} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

@@ -25,18 +25,19 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialData } from '@/context/financial-context';
 import type { Client } from '@/lib/types';
+import { formatCPF, formatPhone } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(3, {
     message: 'O nome do cliente deve ter pelo menos 3 caracteres.',
   }),
-  cpf: z.string().min(11, {
-    message: 'O CPF deve ter pelo menos 11 caracteres.',
+  cpf: z.string().min(14, {
+    message: 'O CPF deve ter 11 dígitos.',
   }),
   email: z.string().email({
     message: 'Por favor, insira um endereço de e-mail válido.',
   }),
-  phone: z.string().min(8, {
+  phone: z.string().min(10, {
     message: 'O telefone é inválido.',
   }),
   address: z.string().min(5, {
@@ -92,14 +93,19 @@ export function ClientDialog({ isOpen, onOpenChange, clientToEdit }: ClientDialo
 
 
   function onSubmit(values: NewClientFormValues) {
+    const formattedValues = {
+        ...values,
+        cpf: values.cpf.replace(/\D/g, ''),
+        phone: values.phone.replace(/\D/g, ''),
+    }
     if (isEditMode && clientToEdit) {
-      updateClient(clientToEdit.id, values);
+      updateClient(clientToEdit.id, formattedValues);
       toast({
         title: 'Cliente Atualizado!',
         description: `O cliente "${values.name}" foi atualizado com sucesso.`,
       });
     } else {
-      createClient(values);
+      createClient(formattedValues);
       toast({
         title: 'Cliente Criado!',
         description: `O cliente "${values.name}" foi adicionado com sucesso.`,
@@ -141,7 +147,7 @@ export function ClientDialog({ isOpen, onOpenChange, clientToEdit }: ClientDialo
                   <FormItem>
                     <FormLabel>CPF</FormLabel>
                     <FormControl>
-                      <Input placeholder="000.000.000-00" {...field} />
+                      <Input placeholder="000.000.000-00" {...field} onChange={(e) => field.onChange(formatCPF(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -154,7 +160,7 @@ export function ClientDialog({ isOpen, onOpenChange, clientToEdit }: ClientDialo
                   <FormItem>
                     <FormLabel>Telefone</FormLabel>
                     <FormControl>
-                      <Input placeholder="(00) 90000-0000" {...field} />
+                      <Input placeholder="(00) 90000-0000" {...field} onChange={(e) => field.onChange(formatPhone(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
