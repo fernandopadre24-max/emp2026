@@ -41,6 +41,7 @@ import { PageHeader } from '@/components/page-header';
 import { ArrowLeft, Loader2, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Label } from '@/components/ui/label';
 
 type SimulatedInstallment = {
   number: number;
@@ -63,7 +64,7 @@ const formSchema = z.object({
   borrowerCpf: z.string().optional(),
   borrowerPhone: z.string().optional(),
   borrowerAddress: z.string().optional(),
-  email: z.string().optional(),
+  email: z.string().email({ message: 'Email inválido.' }).optional().or(z.literal('')),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -131,7 +132,12 @@ export default function NewLoanPage() {
     mode: 'onChange',
   });
 
-  const { amount, installments, interestRate, startDate, iofRate, iofValue } = form.getValues();
+  const amount = form.watch('amount');
+  const installments = form.watch('installments');
+  const interestRate = form.watch('interestRate');
+  const startDate = form.watch('startDate');
+  const iofRate = form.watch('iofRate');
+  const iofValue = form.watch('iofValue');
 
   React.useEffect(() => {
     if (!isSimulationEnabled) {
@@ -168,11 +174,12 @@ export default function NewLoanPage() {
 
     for (let i = 1; i <= installments; i++) {
         const interest = remainingBalance * monthlyInterestRate;
-        totalInterest += interest;
         const principal = installmentAmount - interest;
         remainingBalance -= principal;
 
         const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
+        
+        totalInterest += interest;
 
         simulatedInstallments.push({
             number: i,
@@ -183,7 +190,7 @@ export default function NewLoanPage() {
         });
     }
     
-    const totalAmount = amount + currentIof + totalInterest;
+    const totalAmount = totalLoanAmount + totalInterest;
 
     setSimulation({
       installments: simulatedInstallments,
