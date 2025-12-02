@@ -4,10 +4,13 @@ import * as React from 'react';
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
 import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
 import { User as UserIcon, Library, Wallet } from 'lucide-react';
-import { useCollection, useFirestore } from '@/firebase';
-import { writeBatch, collection, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { writeBatch, collection, doc, serverTimestamp, Timestamp, setDoc, addDoc, deleteDoc, updateDoc, runTransaction, where, query, getDocs } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { add, format } from 'date-fns';
+import type { NewAccountFormValues } from '@/app/(app)/contas/components/new-account-dialog';
 
 interface FinancialDataContextType {
   accounts: Account[];
@@ -26,15 +29,19 @@ interface FinancialDataContextType {
     destinationAccountId: string
   ) => void;
   seedDatabase: () => Promise<void>;
+  createAccount: (values: NewAccountFormValues) => void;
 }
 
 const FinancialDataContext = React.createContext<FinancialDataContextType | undefined>(undefined);
 
 export function FinancialProvider({ children }: { children: React.ReactNode }) {
+  const firestore = useFirestore();
+  const { user } = useUser();
+
+  // We pass the user ID to the filter so that the hooks are re-evaluated when the user changes
   const { data: accountsData, loading: accountsLoading } = useCollection<Account>('accounts');
   const { data: clientsData, loading: clientsLoading } = useCollection<Client>('clients');
   const { data: loansData, loading: loansLoading } = useCollection<Loan>('loans');
-  const firestore = useFirestore();
   
   const loading = accountsLoading || clientsLoading || loansLoading;
 
@@ -51,6 +58,20 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     if (!clientsData) return [];
     return clientsData.map(c => ({...c, avatar: UserIcon}));
   }, [clientsData]);
+
+  const createAccount = async (values: NewAccountFormValues) => {
+    if (!firestore) return;
+    try {
+      const accountRef = doc(collection(firestore, 'accounts'));
+      await setDoc(accountRef, { ...values, id: accountRef.id, transactions: [] });
+    } catch(err) {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'accounts',
+          operation: 'create',
+          requestResourceData: values,
+        }, err));
+    }
+  }
 
 
   const createLoan = (values: NewLoanFormValues) => {
@@ -81,6 +102,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   };
   
     const seedDatabase = async () => {
+    if (!firestore) return;
     const batch = writeBatch(firestore);
 
     // 1. Seed Accounts (2)
@@ -89,6 +111,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     accountIds.forEach((id, index) => {
       const accountRef = doc(firestore, 'accounts', id);
       batch.set(accountRef, {
+        id,
         name: accountNames[index],
         balance: Math.random() * 20000 + 5000,
         transactions: [],
@@ -173,6 +196,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     deleteLoan,
     registerPayment,
     seedDatabase,
+    createAccount,
   };
 
   return (

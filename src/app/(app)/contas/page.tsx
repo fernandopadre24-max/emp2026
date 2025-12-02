@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,20 +8,22 @@ import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown } fr
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
+import { NewAccountDialog } from './components/new-account-dialog';
 
 export default function ContasPage() {
-  const { accounts } = useFinancialData();
+  const { accounts, loading } = useFinancialData();
+  const [isNewAccountOpen, setNewAccountOpen] = React.useState(false);
+
   const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
   const totalIncome = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Receita').reduce((acc, t) => acc + t.amount, 0);
   const totalExpenses = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Despesa').reduce((acc, t) => acc + t.amount, 0);
-
 
   return (
     <>
       <PageHeader
         title="Contas"
         action={
-            <Button>
+            <Button onClick={() => setNewAccountOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Nova Conta
             </Button>
@@ -67,32 +70,38 @@ export default function ContasPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {accounts.map((account) => (
-            <Card key={account.id}>
-                <CardHeader>
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-primary/10 p-3 rounded-full">
-                                <account.icon className="w-6 h-6 text-primary" />
+        {loading ? (
+            <p>Carregando contas...</p>
+        ) : (
+            accounts.map((account) => (
+                <Card key={account.id}>
+                    <CardHeader>
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-primary/10 p-3 rounded-full">
+                                    <account.icon className="w-6 h-6 text-primary" />
+                                </div>
+                                <div>
+                                    <CardTitle>{account.name}</CardTitle>
+                                    <p className="text-2xl font-bold">{formatCurrency(account.balance)}</p>
+                                </div>
                             </div>
-                            <div>
-                                <CardTitle>{account.name}</CardTitle>
-                                <p className="text-2xl font-bold">{formatCurrency(account.balance)}</p>
-                            </div>
+                             {/* Placeholder for edit/delete icons */}
                         </div>
-                         {/* Placeholder for edit/delete icons */}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <Button variant="outline" className="w-full" asChild>
-                        <Link href={`/contas/${account.id}`}>
-                            Ver Extrato <ArrowUpRight className="ml-2 h-4 w-4" />
-                        </Link>
-                    </Button>
-                </CardContent>
-            </Card>
-        ))}
+                    </CardHeader>
+                    <CardContent>
+                        <Button variant="outline" className="w-full" asChild>
+                            <Link href={`/contas/${account.id}`}>
+                                Ver Extrato <ArrowUpRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            ))
+        )}
       </div>
+      
+      <NewAccountDialog isOpen={isNewAccountOpen} onOpenChange={setNewAccountOpen} />
     </>
   );
 }
