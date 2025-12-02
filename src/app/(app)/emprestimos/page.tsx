@@ -310,7 +310,7 @@ export default function EmprestimosPage() {
                                 <div className="flex-1">
                                     <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
                                     <div className="flex items-center gap-2 flex-wrap mt-2">
-                                        <Badge variant="outline" className="border-border text-muted-foreground">{loan.id}</Badge>
+                                        <Badge variant="outline" className="border-border text-muted-foreground">{loan.code}</Badge>
                                     </div>
                                     <div className="mt-2">
                                         <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>

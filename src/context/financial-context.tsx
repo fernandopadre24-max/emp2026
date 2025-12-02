@@ -90,7 +90,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
 
   const createLoan = async (values: NewLoanFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !loansData) return;
 
     try {
       await runTransaction(firestore, async (transaction) => {
@@ -163,10 +163,13 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
                 status: 'Pendente' as const,
             };
         });
+        
+        const newLoanCode = `EMP-${(loansData.length + 1).toString().padStart(3, '0')}`;
 
         // Create loan document
         const newLoan: Omit<Loan, 'payments'> = {
             id: loanRef.id,
+            code: newLoanCode,
             borrowerName: borrowerName!,
             clientId: clientId!,
             accountId: values.accountId,
@@ -459,6 +462,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         
         batch.set(loanRef, {
             id: loanRef.id,
+            code: `EMP-${(i + 1).toString().padStart(3, '0')}`,
             borrowerName: randomClient.name,
             clientId: randomClient.id,
             accountId: randomAccount.id,

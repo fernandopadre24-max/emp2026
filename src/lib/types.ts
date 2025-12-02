@@ -12,6 +12,7 @@ export type Client = {
 
 export type Loan = {
   id: string;
+  code: string;
   borrowerName: string;
   clientId: string;
   accountId: string; // ID of the account from which the loan amount was debited
