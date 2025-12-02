@@ -63,7 +63,7 @@ const formSchema = z.object({
   borrowerCpf: z.string().optional(),
   borrowerPhone: z.string().optional(),
   borrowerAddress: z.string().optional(),
-  email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }).optional().or(z.literal('')),
+  email: z.string().optional(),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -85,6 +85,7 @@ export default function NewLoanPage() {
   const { accounts, clients, createLoan } = useFinancialData();
   const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSimulationEnabled, setIsSimulationEnabled] = React.useState(true);
   const router = useRouter();
 
   const refinedSchema = formSchema.superRefine((data, ctx) => {
@@ -133,6 +134,11 @@ export default function NewLoanPage() {
   const { amount, installments, interestRate, startDate, iofRate, iofValue } = form.getValues();
 
   React.useEffect(() => {
+    if (!isSimulationEnabled) {
+      setSimulation(null);
+      return;
+    }
+
     const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse({ amount, installments, interestRate, startDate });
     
     if (!validationResult.success || !startDate) {
@@ -162,9 +168,9 @@ export default function NewLoanPage() {
 
     for (let i = 1; i <= installments; i++) {
         const interest = remainingBalance * monthlyInterestRate;
+        totalInterest += interest;
         const principal = installmentAmount - interest;
         remainingBalance -= principal;
-        totalInterest += interest;
 
         const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
 
@@ -184,7 +190,7 @@ export default function NewLoanPage() {
       totalAmount: totalAmount,
       totalInterest: totalInterest,
     });
-  }, [amount, installments, interestRate, startDate, iofRate, iofValue, form]);
+  }, [amount, installments, interestRate, startDate, iofRate, iofValue, form, isSimulationEnabled]);
 
 
   async function onSubmit(values: NewLoanFormValues) {
@@ -304,7 +310,7 @@ export default function NewLoanPage() {
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Email</FormLabel>
+                                        <FormLabel>Email (Opcional)</FormLabel>
                                         <FormControl>
                                             <Input placeholder="cliente@email.com" {...field} value={field.value || ''}/>
                                         </FormControl>
@@ -492,11 +498,23 @@ export default function NewLoanPage() {
         
         <Card>
             <CardHeader>
-                <CardTitle>Simulação</CardTitle>
-                <CardDescription>Visualize o plano de amortização.</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Simulação</CardTitle>
+                        <CardDescription>Visualize o plano de amortização.</CardDescription>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="simulation-mode"
+                            checked={isSimulationEnabled}
+                            onCheckedChange={setIsSimulationEnabled}
+                        />
+                        <Label htmlFor="simulation-mode">Simular</Label>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
-                {simulation ? (
+                {isSimulationEnabled && simulation ? (
                     <div className="space-y-4">
                         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm'>
                             <div className="rounded-md border p-3">
@@ -540,7 +558,9 @@ export default function NewLoanPage() {
                              <div className="flex justify-center">
                                 <Wand2 className="h-10 w-10 text-muted-foreground" />
                             </div>
-                            <p className="text-muted-foreground">Preencha os campos para simular.</p>
+                            <p className="text-muted-foreground">
+                                {isSimulationEnabled ? 'Preencha os campos para simular.' : 'A simulação está desativada.'}
+                            </p>
                         </div>
                     </div>
                 )}
