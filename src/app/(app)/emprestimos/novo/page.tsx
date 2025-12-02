@@ -86,7 +86,7 @@ export default function NewLoanPage() {
   const { accounts, clients, createLoan } = useFinancialData();
   const [simulation, setSimulation] = React.useState<SimulationResult | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isSimulationEnabled, setIsSimulationEnabled] = React.useState(true);
+  const [isSimulationEnabled, setIsSimulationEnabled] = React.useState(false);
   const router = useRouter();
 
   const refinedSchema = formSchema.superRefine((data, ctx) => {
@@ -164,7 +164,20 @@ export default function NewLoanPage() {
     const totalLoanAmount = amount + currentIof;
   
     if (monthlyInterestRate <= 0) {
-      setSimulation(null);
+      // Handle case with no interest
+      const installmentAmount = totalLoanAmount / installments;
+      const simulatedInstallments = Array.from({ length: installments }).map((_, i) => ({
+        number: i + 1,
+        dueDate: add(new Date(`${startDate}T00:00:00`), { months: i + 1 }).toLocaleDateString('pt-BR'),
+        amount: installmentAmount,
+        principal: installmentAmount,
+        interest: 0,
+      }));
+      setSimulation({
+        installments: simulatedInstallments,
+        totalAmount: totalLoanAmount,
+        totalInterest: 0,
+      });
       return;
     }
   
@@ -179,12 +192,14 @@ export default function NewLoanPage() {
     }
   
     let remainingBalance = totalLoanAmount;
+    let totalInterestPaid = 0;
     const simulatedInstallments: SimulatedInstallment[] = [];
     
     for (let i = 1; i <= installments; i++) {
       const interestPayment = remainingBalance * monthlyInterestRate;
       const principalPayment = installmentAmount - interestPayment;
       remainingBalance -= principalPayment;
+      totalInterestPaid += interestPayment;
   
       const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
   
@@ -198,7 +213,6 @@ export default function NewLoanPage() {
     }
   
     const totalAmountPaid = installmentAmount * installments;
-    const totalInterestPaid = totalAmountPaid - totalLoanAmount;
   
     setSimulation({
       installments: simulatedInstallments,
