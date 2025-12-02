@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Banknote, Calendar, TrendingUp, Percent, FileSpreadsheet } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Banknote, Calendar, TrendingUp, Percent, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,20 @@ import { useFinancialData } from '@/context/financial-context';
 import Link from 'next/link';
 import { NewLoanFormValues } from './novo/page';
 import { AmortizationDialog } from './components/amortization-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 type Installment = Loan['installments'][0];
@@ -32,6 +46,7 @@ export default function EmprestimosPage() {
   const [paymentState, setPaymentState] = React.useState<{ loan: Loan; installment: Installment } | null>(null);
   const [historyState, setHistoryState] = React.useState<{ loan: Loan; installment: Installment } | null>(null);
   const [amortizationState, setAmortizationState] = React.useState<Loan | null>(null);
+  const [openCollapsibles, setOpenCollapsibles] = React.useState<Set<string>>(new Set());
 
 
   const { toast } = useToast();
@@ -45,14 +60,12 @@ export default function EmprestimosPage() {
     setDeletingLoanId(loanId);
   };
 
-  const handleOpenPaymentDialog = (installment: Installment) => {
-    if (!amortizationState) return;
-    setPaymentState({ loan: amortizationState, installment });
+  const handleOpenPaymentDialog = (loan: Loan, installment: Installment) => {
+    setPaymentState({ loan, installment });
   };
 
-  const handleOpenHistoryDialog = (installment: Installment) => {
-    if (!amortizationState) return;
-    setHistoryState({ loan: amortizationState, installment });
+  const handleOpenHistoryDialog = (loan: Loan, installment: Installment) => {
+    setHistoryState({ loan, installment });
   };
 
   const handleDeleteLoan = async () => {
@@ -83,6 +96,26 @@ export default function EmprestimosPage() {
         updateLoan(values, id);
     }
   }
+  
+  const getInstallmentStatusInfo = (status: Installment['status'], dueDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDateObj = new Date(dueDate + 'T00:00:00');
+
+    if ((status === 'Pendente' || status === 'Parcialmente Pago') && dueDateObj < today) {
+      return { text: 'Atrasado', variant: 'destructive' as const };
+    }
+
+    switch (status) {
+      case 'Pago':
+        return { text: 'Pago', variant: 'default' as const };
+      case 'Parcialmente Pago':
+        return { text: 'Parcial', variant: 'secondary' as const };
+      case 'Pendente':
+      default:
+        return { text: 'Pendente', variant: 'outline' as const };
+    }
+  };
 
   const filteredLoans = React.useMemo(() => {
     if (activeFilter === 'Todos') return loans;
@@ -103,6 +136,18 @@ export default function EmprestimosPage() {
   }), [loans]);
   
   const loanToDelete = loans.find(l => l.id === deletingLoanId);
+
+  const toggleCollapsible = (loanId: string) => {
+    setOpenCollapsibles(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(loanId)) {
+            newSet.delete(loanId);
+        } else {
+            newSet.add(loanId);
+        }
+        return newSet;
+    });
+  };
 
   return (
     <div className="text-white">
@@ -206,60 +251,102 @@ export default function EmprestimosPage() {
           };
 
           return (
-            <Card key={loan.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className="text-xl">{loan.borrowerName}</CardTitle>
-                        <CardDescription className="text-xs">{loan.code}</CardDescription>
-                    </div>
-                    <Badge className={cn('text-xs', getStatusClasses(displayStatus))}>{displayStatus}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 flex-grow">
-                <div>
-                  <p className="text-sm text-muted-foreground">Valor Principal</p>
-                  <p className="text-2xl font-bold">{formatCurrency(loan.amount)}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-1">
-                        <p className="text-muted-foreground flex items-center gap-1"><Percent className="w-3 h-3" /> Juros (mês)</p>
-                        <p className="font-semibold">{loan.interestRate}%</p>
-                    </div>
-                    <div className="space-y-1">
-                        <p className="text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Custo Efetivo</p>
-                        <p className="font-semibold">{formatCurrency(totalInterest)}</p>
-                    </div>
-                    <div className="space-y-1">
-                        <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total a Pagar</p>
-                        <p className="font-semibold">{formatCurrency(totalAmountPayable)}</p>
-                    </div>
-                    {nextInstallment && (
-                        <div className="space-y-1">
-                            <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> Próx. Parcela</p>
-                            <p className="font-semibold">{new Date(nextInstallment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+            <Collapsible key={loan.id} asChild onOpenChange={() => toggleCollapsible(loan.id)}>
+                 <Card>
+                    <CollapsibleTrigger asChild>
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 rounded-t-lg">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle className="text-xl">{loan.borrowerName}</CardTitle>
+                                    <CardDescription className="text-xs">{loan.code}</CardDescription>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     <Badge className={cn('text-xs', getStatusClasses(displayStatus))}>{displayStatus}</Badge>
+                                      <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", openCollapsibles.has(loan.id) && "rotate-180")} />
+                                </div>
+                            </div>
+                        </CardHeader>
+                    </CollapsibleTrigger>
+                    <CardContent className="space-y-4 pt-4">
+                        <div>
+                        <p className="text-sm text-muted-foreground">Valor Principal</p>
+                        <p className="text-2xl font-bold">{formatCurrency(loan.amount)}</p>
                         </div>
-                    )}
-                </div>
 
-                <div>
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Progresso</span>
-                        <span>{paidInstallments}/{totalInstallments} pagas</span>
-                    </div>
-                    <Progress value={progress} className="h-2 bg-white/10" />
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button className="w-full" onClick={() => setAmortizationState(loan)}>
-                    <FileSpreadsheet className="mr-2" />
-                    Ver Parcelas
-                </Button>
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleOpenEditLoan(loan)}><Edit /></Button>
-                <Button variant="ghost" size="icon" className="shrink-0 hover:text-destructive" onClick={() => handleOpenDeleteDialog(loan.id)}><Trash2 /></Button>
-              </CardFooter>
-            </Card>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-1"><Percent className="w-3 h-3" /> Juros (mês)</p>
+                                <p className="font-semibold">{loan.interestRate}%</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Custo Efetivo</p>
+                                <p className="font-semibold">{formatCurrency(totalInterest)}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total a Pagar</p>
+                                <p className="font-semibold">{formatCurrency(totalAmountPayable)}</p>
+                            </div>
+                            {nextInstallment && (
+                                <div className="space-y-1">
+                                    <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> Próx. Parcela</p>
+                                    <p className="font-semibold">{new Date(nextInstallment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                <span>Progresso</span>
+                                <span>{paidInstallments}/{totalInstallments} pagas</span>
+                            </div>
+                            <Progress value={progress} className="h-2 bg-white/10" />
+                        </div>
+                    </CardContent>
+
+                    <CollapsibleContent>
+                        <div className="px-6 pb-4">
+                            <h4 className="mb-2 font-semibold">Parcelas</h4>
+                            <div className="rounded-md border max-h-60 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>#</TableHead>
+                                            <TableHead>Venc.</TableHead>
+                                            <TableHead>Valor</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loan.installments.map((inst) => {
+                                            const statusInfo = getInstallmentStatusInfo(inst.status, inst.dueDate);
+                                            return (
+                                                <TableRow key={inst.number}>
+                                                    <TableCell>{inst.number}</TableCell>
+                                                    <TableCell>{new Date(inst.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                                                    <TableCell>{formatCurrency(inst.amount)}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={statusInfo.variant} className="text-xs">{statusInfo.text}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="link" size="sm" className="h-auto p-0" onClick={() => handleOpenPaymentDialog(loan, inst)} disabled={inst.status === 'Pago'}>Pagar</Button>
+                                                        <Button variant="link" size="sm" className="h-auto p-0 ml-2 text-muted-foreground" onClick={() => handleOpenHistoryDialog(loan, inst)}>Hist.</Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </CollapsibleContent>
+
+                    <CardFooter className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="shrink-0 ml-auto" onClick={(e) => { e.stopPropagation(); handleOpenEditLoan(loan);}}><Edit /></Button>
+                        <Button variant="ghost" size="icon" className="shrink-0 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(loan.id);}}><Trash2 /></Button>
+                    </CardFooter>
+                 </Card>
+            </Collapsible>
           );
         })}
         {filteredLoans.length === 0 && (
@@ -291,8 +378,8 @@ export default function EmprestimosPage() {
           isOpen={!!amortizationState}
           onOpenChange={(isOpen) => !isOpen && setAmortizationState(null)}
           loan={amortizationState}
-          onPayClick={handleOpenPaymentDialog}
-          onHistoryClick={handleOpenHistoryDialog}
+          onPayClick={(inst) => amortizationState && handleOpenPaymentDialog(amortizationState, inst)}
+          onHistoryClick={(inst) => amortizationState && handleOpenHistoryDialog(amortizationState, inst)}
         />
 
       <PaymentDialog
