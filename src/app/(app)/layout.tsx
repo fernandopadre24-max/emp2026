@@ -27,7 +27,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 
 export default function AppLayout({
@@ -36,7 +35,6 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <FirebaseClientProvider>
       <FinancialProvider>
         <SidebarProvider>
           <Sidebar>
@@ -92,6 +90,5 @@ export default function AppLayout({
           </SidebarInset>
         </SidebarProvider>
       </FinancialProvider>
-    </FirebaseClientProvider>
   );
 }
