@@ -95,10 +95,10 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // 2. Seed Clients (10)
-    const clientIds = Array.from({ length: 10 }, () => nanoid(10));
-    const firstNames = ['Ana', 'Bruno', 'Carla', 'Daniel', 'Eduarda', 'Felipe', 'Gabriela', 'Henrique', 'Isabela', 'Jorge'];
-    const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza', 'Pereira', 'Costa', 'Rodrigues', 'Almeida', 'Nascimento', 'Lima'];
+    // 2. Seed Clients (4)
+    const clientIds = Array.from({ length: 4 }, () => nanoid(10));
+    const firstNames = ['Ana', 'Bruno', 'Carla', 'Daniel'];
+    const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza'];
     
     const clients = clientIds.map((id, index) => {
         const client = {
