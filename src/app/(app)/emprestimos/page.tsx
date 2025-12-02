@@ -3,135 +3,25 @@
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Banknote, ChevronDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Banknote, Calendar, TrendingUp, Percent, FileSpreadsheet } from 'lucide-react';
 import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { PaymentDialog } from './components/payment-dialog';
 import { NewLoanDialog } from './components/new-loan-dialog';
 import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentHistoryDialog } from './components/payment-history-dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { DollarSign, List, AlertTriangle } from 'lucide-react';
 import { useFinancialData } from '@/context/financial-context';
 import Link from 'next/link';
 import { NewLoanFormValues } from './novo/page';
+import { AmortizationDialog } from './components/amortization-dialog';
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 type Installment = Loan['installments'][0];
-
-// Componente para a tabela de amortização (plano de pagamento)
-const AmortizationPlan = ({
-  loan,
-  onPayClick,
-  onHistoryClick,
-}: {
-  loan: Loan;
-  onPayClick: (installment: Installment) => void;
-  onHistoryClick: (installment: Installment) => void;
-}) => {
-  const getStatusInfo = (status: Installment['status'], dueDate: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
-    const dueDateObj = new Date(dueDate + 'T00:00:00');
-
-    if ((status === 'Pendente' || status === 'Parcialmente Pago') && dueDateObj < today) {
-      return { text: 'Atrasado', variant: 'destructive' };
-    }
-
-    switch (status) {
-      case 'Pago':
-        return { text: 'Pago', variant: 'default' };
-      case 'Parcialmente Pago':
-        return { text: 'Parcialmente Pago', variant: 'secondary' };
-      case 'Pendente':
-      default:
-        return { text: 'Pendente', variant: 'outline' };
-    }
-  };
-
-  return (
-    <div className="bg-card-foreground/5 p-4 mt-2 rounded-lg">
-      <h3 className="font-semibold text-lg mb-4 text-foreground">Plano de Amortização</h3>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b-white/10">
-              <TableHead className="text-muted-foreground">#</TableHead>
-              <TableHead className="text-muted-foreground">Vencimento</TableHead>
-              <TableHead className="text-muted-foreground">Valor Parcela</TableHead>
-              <TableHead className="text-muted-foreground">Principal</TableHead>
-              <TableHead className="text-muted-foreground">Juros</TableHead>
-              <TableHead className="text-muted-foreground">Valor Pago</TableHead>
-              <TableHead className="text-muted-foreground">Status</TableHead>
-              <TableHead className="text-muted-foreground text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loan.installments.map((installment) => {
-              const statusInfo = getStatusInfo(installment.status, installment.dueDate);
-              return (
-                <TableRow key={installment.number} className="border-b-white/10">
-                  <TableCell className="font-medium text-foreground">{installment.number}</TableCell>
-                  <TableCell className="text-foreground">{new Date(installment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell className="text-foreground">{formatCurrency(installment.amount)}</TableCell>
-                  <TableCell className="text-foreground">{formatCurrency(installment.principal)}</TableCell>
-                  <TableCell className="text-foreground">{formatCurrency(installment.interest)}</TableCell>
-                  <TableCell className="text-green-400">{formatCurrency(installment.paidAmount)}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusInfo.variant as any} className="text-xs">
-                      {statusInfo.text}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button
-                      variant="link"
-                      className="text-primary p-0 h-auto disabled:text-muted-foreground disabled:no-underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPayClick(installment);
-                      }}
-                      disabled={installment.status === 'Pago'}
-                    >
-                      Pagar
-                    </Button>
-                    <Button
-                      variant="link"
-                      className="text-muted-foreground p-0 h-auto ml-4"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onHistoryClick(installment);
-                      }}
-                    >
-                      Histórico
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
-};
-
 
 export default function EmprestimosPage() {
   const { loans, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
@@ -141,6 +31,8 @@ export default function EmprestimosPage() {
   const [deletingLoanId, setDeletingLoanId] = React.useState<string | null>(null);
   const [paymentState, setPaymentState] = React.useState<{ loan: Loan; installment: Installment } | null>(null);
   const [historyState, setHistoryState] = React.useState<{ loan: Loan; installment: Installment } | null>(null);
+  const [amortizationState, setAmortizationState] = React.useState<Loan | null>(null);
+
 
   const { toast } = useToast();
 
@@ -149,21 +41,18 @@ export default function EmprestimosPage() {
     setNewLoanOpen(true);
   };
   
-  const handleOpenNewLoan = () => {
-    setEditingLoan(null);
-    setNewLoanOpen(true);
-  };
-
   const handleOpenDeleteDialog = (loanId: string) => {
     setDeletingLoanId(loanId);
   };
 
-  const handleOpenPaymentDialog = (loan: Loan, installment: Installment) => {
-    setPaymentState({ loan, installment });
+  const handleOpenPaymentDialog = (installment: Installment) => {
+    if (!amortizationState) return;
+    setPaymentState({ loan: amortizationState, installment });
   };
 
-  const handleOpenHistoryDialog = (loan: Loan, installment: Installment) => {
-    setHistoryState({ loan, installment });
+  const handleOpenHistoryDialog = (installment: Installment) => {
+    if (!amortizationState) return;
+    setHistoryState({ loan: amortizationState, installment });
   };
 
   const handleDeleteLoan = async () => {
@@ -199,7 +88,11 @@ export default function EmprestimosPage() {
     if (activeFilter === 'Todos') return loans;
     if (activeFilter === 'Parcialmente Pago') return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
     if (activeFilter === 'Quitado') return loans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
-    return loans.filter(loan => loan.status === activeFilter);
+    return loans.filter(loan => {
+      const isOverdue = (loan.status === 'Ativo' || loan.status === 'Pendente') && loan.installments.some(i => (i.status === 'Pendente' || i.status === 'Parcialmente Pago') && new Date(i.dueDate + 'T00:00:00') < new Date());
+      const displayStatus = isOverdue ? 'Atrasado' : loan.status;
+      return displayStatus === activeFilter;
+    });
   }, [activeFilter, loans]);
 
   const summary = React.useMemo(() => ({
@@ -285,13 +178,16 @@ export default function EmprestimosPage() {
         </div>
       </div>
 
-      <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredLoans.map(loan => {
           const totalInstallments = loan.installments.length;
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
           const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
-          const totalAmount = loan.installments.reduce((acc, i) => acc + i.amount, 0);
-          
+          const totalAmountPayable = loan.installments.reduce((acc, i) => acc + i.amount, 0);
+          const totalInterest = totalAmountPayable - loan.amount - (loan.iofValue || 0);
+
+          const nextInstallment = loan.installments.find(i => i.status === 'Pendente' || i.status === 'Parcialmente Pago');
+
           const isOverdue = (loan.status === 'Ativo' || loan.status === 'Pendente') && loan.installments.some(i => (i.status === 'Pendente' || i.status === 'Parcialmente Pago') && new Date(i.dueDate + 'T00:00:00') < new Date());
           const displayStatus = isOverdue ? 'Atrasado' : loan.status;
 
@@ -310,54 +206,64 @@ export default function EmprestimosPage() {
           };
 
           return (
-            <Accordion key={loan.id} type="single" collapsible className="bg-card border border-border rounded-lg mb-4">
-              <AccordionItem value={loan.id} className="border-none">
-                <div className="flex w-full p-4 items-start">
-                    <div className="flex-1 group/trigger">
-                        <AccordionTrigger className="w-full p-0 hover:no-underline text-left flex-1 [&>svg]:hidden">
-                            <div className="flex flex-col md:flex-row gap-4 w-full text-left items-start">
-                                <div className="flex-1">
-                                    <h2 className="text-xl font-semibold text-foreground">{loan.borrowerName}</h2>
-                                    <div className="flex items-center gap-2 flex-wrap mt-2">
-                                        <Badge variant="outline" className="border-border text-muted-foreground">{loan.code}</Badge>
-                                    </div>
-                                    <div className="mt-2">
-                                        <p className="text-3xl font-bold text-foreground">{formatCurrency(loan.amount)}</p>
-                                        <p className="text-sm text-muted-foreground">{totalInstallments} parcelas de ~{formatCurrency(totalAmount / totalInstallments)}</p>
-                                    </div>
-                                </div>
-                                <div className="w-full md:w-64 flex-shrink-0">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm text-muted-foreground">Início em {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                                        <Badge className={cn('text-xs', getStatusClasses(displayStatus))}>{displayStatus}</Badge>
-                                    </div>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-muted-foreground">{paidInstallments}/{totalInstallments} Pagas</p>
-                                        <Progress value={progress} className="h-2 mt-1 bg-white/10" />
-                                    </div>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
+            <Card key={loan.id} className="flex flex-col">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="text-xl">{loan.borrowerName}</CardTitle>
+                        <CardDescription className="text-xs">{loan.code}</CardDescription>
                     </div>
-                    <div className="flex flex-col items-center justify-start gap-1 pl-4">
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleOpenEditLoan(loan)}><Edit className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-500" onClick={() => handleOpenDeleteDialog(loan.id)}><Trash2 className="w-4 h-4" /></Button>
-                        <AccordionTrigger className="p-0 [&>svg]:mx-auto"><ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200" /></AccordionTrigger>
-                    </div>
+                    <Badge className={cn('text-xs', getStatusClasses(displayStatus))}>{displayStatus}</Badge>
                 </div>
-                <AccordionContent className="p-4 pt-0">
-                  <AmortizationPlan
-                    loan={loan}
-                    onPayClick={(installment) => handleOpenPaymentDialog(loan, installment)}
-                    onHistoryClick={(installment) => handleOpenHistoryDialog(loan, installment)}
-                  />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              </CardHeader>
+              <CardContent className="space-y-4 flex-grow">
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor Principal</p>
+                  <p className="text-2xl font-bold">{formatCurrency(loan.amount)}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-1">
+                        <p className="text-muted-foreground flex items-center gap-1"><Percent className="w-3 h-3" /> Juros (mês)</p>
+                        <p className="font-semibold">{loan.interestRate}%</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Custo Efetivo</p>
+                        <p className="font-semibold">{formatCurrency(totalInterest)}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Total a Pagar</p>
+                        <p className="font-semibold">{formatCurrency(totalAmountPayable)}</p>
+                    </div>
+                    {nextInstallment && (
+                        <div className="space-y-1">
+                            <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> Próx. Parcela</p>
+                            <p className="font-semibold">{new Date(nextInstallment.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Progresso</span>
+                        <span>{paidInstallments}/{totalInstallments} pagas</span>
+                    </div>
+                    <Progress value={progress} className="h-2 bg-white/10" />
+                </div>
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button className="w-full" onClick={() => setAmortizationState(loan)}>
+                    <FileSpreadsheet className="mr-2" />
+                    Ver Parcelas
+                </Button>
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleOpenEditLoan(loan)}><Edit /></Button>
+                <Button variant="ghost" size="icon" className="shrink-0 hover:text-destructive" onClick={() => handleOpenDeleteDialog(loan.id)}><Trash2 /></Button>
+              </CardFooter>
+            </Card>
           );
         })}
         {filteredLoans.length === 0 && (
-          <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-center">
+          <div className="col-span-full flex h-40 items-center justify-center rounded-lg border border-dashed text-center">
             <p className="text-muted-foreground">Nenhum empréstimo encontrado para o filtro "{activeFilter}".</p>
           </div>
         )}
@@ -381,6 +287,14 @@ export default function EmprestimosPage() {
         description={`Tem certeza que deseja excluir o empréstimo para ${loanToDelete?.borrowerName}? Esta ação não pode ser desfeita.`}
       />
 
+       <AmortizationDialog
+          isOpen={!!amortizationState}
+          onOpenChange={(isOpen) => !isOpen && setAmortizationState(null)}
+          loan={amortizationState}
+          onPayClick={handleOpenPaymentDialog}
+          onHistoryClick={handleOpenHistoryDialog}
+        />
+
       <PaymentDialog
         isOpen={!!paymentState}
         onOpenChange={(isOpen) => !isOpen && setPaymentState(null)}
@@ -398,5 +312,3 @@ export default function EmprestimosPage() {
     </div>
   );
 }
-
-    
