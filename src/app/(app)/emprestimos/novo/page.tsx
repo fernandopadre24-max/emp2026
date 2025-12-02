@@ -32,13 +32,13 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
 import { add } from 'date-fns';
-import type { Loan, Client } from '@/lib/types';
+import type { Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
-import { ArrowLeft, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -131,35 +131,37 @@ export default function NewLoanPage() {
   });
 
   const isNewClient = form.watch('isNewClient');
-  
-  const watchedValues = form.watch(['amount', 'installments', 'interestRate', 'startDate', 'iofRate', 'iofValue']);
+  const amount = form.watch('amount');
+  const installments = form.watch('installments');
+  const interestRate = form.watch('interestRate');
+  const startDate = form.watch('startDate');
+  const iofRate = form.watch('iofRate');
+  const iofValue = form.watch('iofValue');
 
   React.useEffect(() => {
     const handleSimulate = () => {
-      const values = form.getValues();
-      const { amount, installments, interestRate, startDate, iofRate, iofValue } = values;
-
+      const values = { amount, installments, interestRate, startDate, iofRate, iofValue };
       const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse(values);
       if (!validationResult.success) {
         setSimulation(null);
         return;
       }
   
-      const monthlyInterestRate = interestRate / 100;
-      const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
-      const totalLoanAmount = amount + iof;
+      const monthlyInterestRate = values.interestRate / 100;
+      const iof = values.iofValue || (values.iofRate ? values.amount * (values.iofRate / 100) : 0);
+      const totalLoanAmount = values.amount + iof;
   
-      const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
+      const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, values.installments)) / (Math.pow(1 + monthlyInterestRate, values.installments) - 1);
   
       let remainingBalance = totalLoanAmount;
       const simulatedInstallments: SimulatedInstallment[] = [];
   
-      for (let i = 1; i <= installments; i++) {
+      for (let i = 1; i <= values.installments; i++) {
           const interest = remainingBalance * monthlyInterestRate;
           const principal = installmentAmount - interest;
           remainingBalance -= principal;
   
-          const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
+          const dueDate = add(new Date(`${values.startDate}T00:00:00`), { months: i });
   
           simulatedInstallments.push({
               number: i,
@@ -172,13 +174,13 @@ export default function NewLoanPage() {
       
       setSimulation({
         installments: simulatedInstallments,
-        totalAmount: installmentAmount * installments,
-        totalInterest: (installmentAmount * installments) - amount,
+        totalAmount: installmentAmount * values.installments,
+        totalInterest: (installmentAmount * values.installments) - values.amount,
       });
     }
 
     handleSimulate();
-  }, [watchedValues, form]);
+  }, [amount, installments, interestRate, startDate, iofRate, iofValue, form]);
 
 
   async function onSubmit(values: z.infer<typeof refinedSchema>) {
@@ -237,8 +239,8 @@ export default function NewLoanPage() {
                         </div>
                         <FormControl>
                             <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
                             />
                         </FormControl>
                         </FormItem>
