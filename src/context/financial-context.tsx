@@ -98,8 +98,16 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         let borrowerName = clients.find(c => c.id === clientId)?.name;
 
         const loanRef = doc(collection(firestore, 'loans'));
+
+        // Perform all reads first
+        const accountRef = doc(firestore, 'accounts', values.accountId);
+        const accountDoc = await transaction.get(accountRef);
+        if (!accountDoc.exists()) throw new Error("Conta de origem não encontrada.");
+
+        const accountData = accountDoc.data() as Account;
+        if (accountData.balance < values.amount) throw new Error("Saldo insuficiente na conta de origem.");
         
-        // If it's a new client, create it first
+        // Now perform all writes
         if (values.isNewClient && values.borrowerName) {
             const newClientRef = doc(collection(firestore, 'clients'));
             clientId = newClientRef.id;
@@ -114,14 +122,6 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             };
             transaction.set(newClientRef, newClientData);
         }
-
-        // Debit from source account
-        const accountRef = doc(firestore, 'accounts', values.accountId);
-        const accountDoc = await transaction.get(accountRef);
-        if (!accountDoc.exists()) throw new Error("Conta de origem não encontrada.");
-
-        const accountData = accountDoc.data() as Account;
-        if (accountData.balance < values.amount) throw new Error("Saldo insuficiente na conta de origem.");
 
         const newBalance = accountData.balance - values.amount;
         const loanTransaction: Transaction = {
