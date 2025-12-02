@@ -181,7 +181,7 @@ export default function NewLoanPage() {
       totalAmount: installmentAmount * installments,
       totalInterest: (installmentAmount * installments) - amount,
     });
-  }, [watchedValues, formSchema]);
+  }, [watchedValues.amount, watchedValues.installments, watchedValues.interestRate, watchedValues.startDate, watchedValues.iofRate, watchedValues.iofValue]);
 
 
   async function onSubmit(values: NewLoanFormValues) {
@@ -543,5 +543,3 @@ export default function NewLoanPage() {
     </>
   );
 }
-
-    
