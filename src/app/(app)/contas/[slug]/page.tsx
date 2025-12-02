@@ -1,19 +1,22 @@
 'use client';
 
+import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, cn } from '@/lib/utils';
 import { notFound, useParams } from 'next/navigation';
-import { ArrowLeft, ArrowUp, ArrowDown, Download } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Download, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
+import { NewTransactionDialog } from '../components/new-transaction-dialog';
 
 export default function AccountStatementPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const [isNewTransactionOpen, setNewTransactionOpen] = React.useState(false);
 
   const { accounts } = useFinancialData();
   const account = accounts.find(acc => acc.id === slug);
@@ -38,9 +41,9 @@ export default function AccountStatementPage() {
                         Voltar para Contas
                     </Link>
                 </Button>
-                <Button>
-                    <Download className="mr-2 h-4 w-4" />
-                    Exportar
+                <Button onClick={() => setNewTransactionOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nova Transação
                 </Button>
             </div>
         }
@@ -79,6 +82,17 @@ export default function AccountStatementPage() {
                     <div className="text-2xl font-bold text-red-500">{formatCurrency(despesas)}</div>
                 </CardContent>
             </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                        Transações
+                    </CardTitle>
+                    <Download className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{account.transactions.length}</div>
+                </CardContent>
+            </Card>
       </div>
 
       <Card>
@@ -109,10 +123,22 @@ export default function AccountStatementPage() {
                   </TableCell>
                 </TableRow>
               ))}
+                {account.transactions.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            Nenhuma transação encontrada.
+                        </TableCell>
+                    </TableRow>
+                )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+      <NewTransactionDialog 
+        isOpen={isNewTransactionOpen} 
+        onOpenChange={setNewTransactionOpen}
+        defaultAccountId={account.id}
+       />
     </>
   );
 }

@@ -9,10 +9,12 @@ import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
 import { NewAccountDialog } from './components/new-account-dialog';
+import { NewTransactionDialog } from './components/new-transaction-dialog';
 
 export default function ContasPage() {
   const { accounts, loading } = useFinancialData();
   const [isNewAccountOpen, setNewAccountOpen] = React.useState(false);
+  const [isNewTransactionOpen, setNewTransactionOpen] = React.useState(false);
 
   const totalBalance = accounts.reduce((acc, account) => acc + account.balance, 0);
   const totalIncome = accounts.flatMap(a => a.transactions).filter(t => t.type === 'Receita').reduce((acc, t) => acc + t.amount, 0);
@@ -23,10 +25,16 @@ export default function ContasPage() {
       <PageHeader
         title="Contas"
         action={
-            <Button onClick={() => setNewAccountOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Nova Conta
-            </Button>
+            <div className="flex items-center gap-2">
+                 <Button variant="outline" onClick={() => setNewTransactionOpen(true)}>
+                    <Banknote className="mr-2 h-4 w-4" />
+                    Nova Transação
+                </Button>
+                <Button onClick={() => setNewAccountOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nova Conta
+                </Button>
+            </div>
         }
       />
 
@@ -102,6 +110,7 @@ export default function ContasPage() {
       </div>
       
       <NewAccountDialog isOpen={isNewAccountOpen} onOpenChange={setNewAccountOpen} />
+      <NewTransactionDialog isOpen={isNewTransactionOpen} onOpenChange={setNewTransactionOpen} />
     </>
   );
 }

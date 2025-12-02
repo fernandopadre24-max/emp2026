@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
 import type { NewLoanFormValues } from '@/app/(app)/emprestimos/novo/page';
+import type { NewTransactionFormValues } from '@/app/(app)/contas/components/new-transaction-dialog';
 import { User as UserIcon, Library, Wallet } from 'lucide-react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -34,6 +35,7 @@ interface FinancialDataContextType {
   createClient: (values: NewClientFormValues) => Promise<void>;
   updateClient: (id: string, values: NewClientFormValues) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
+  createTransaction: (values: NewTransactionFormValues) => Promise<void>;
 }
 
 const FinancialDataContext = React.createContext<FinancialDataContextType | undefined>(undefined);
@@ -93,7 +95,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const updateClient = async (id: string, values: NewClientFormValues) => {
     if (!firestore) return;
     const clientRef = doc(firestore, 'clients', id);
-    updateDoc(clientRef, values).catch(err => {
+    updateDoc(clientRef, values as any).catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `clients/${id}`,
             operation: 'update',
@@ -139,12 +141,12 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             const newClientRef = doc(collection(firestore, 'clients'));
             clientId = newClientRef.id;
             borrowerName = values.borrowerName;
-            const newClientData = { 
+            const newClientData: Client = { 
                 id: clientId,
                 name: values.borrowerName,
-                cpf: values.borrowerCpf,
-                phone: values.borrowerPhone,
-                address: values.borrowerAddress,
+                cpf: values.borrowerCpf || '',
+                phone: values.borrowerPhone || '',
+                address: values.borrowerAddress || '',
                 email: values.email || 'n/a',
             };
             transaction.set(newClientRef, newClientData);
@@ -168,9 +170,19 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         // Calculate installments
         const { amount, installments: numInstallments, interestRate, startDate, iofRate, iofValue } = values;
         const monthlyInterestRate = interestRate / 100;
-        const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
-        const totalLoanAmount = amount + iof;
-        const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+        const currentIof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
+        const totalLoanAmount = amount + currentIof;
+        
+        let installmentAmount: number;
+        if (monthlyInterestRate > 0) {
+            installmentAmount =
+            totalLoanAmount *
+            (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) /
+            (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+        } else {
+            installmentAmount = totalLoanAmount / numInstallments;
+        }
+
         
         let remainingBalance = totalLoanAmount;
         const installments = Array.from({ length: numInstallments }).map((_, i) => {
@@ -202,8 +214,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             accountId: values.accountId,
             amount,
             interestRate,
-            iofRate,
-            iofValue,
+            iofRate: iofRate || 0,
+            iofValue: iofValue || 0,
             startDate,
             status: 'Ativo',
             installments,
@@ -218,6 +230,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           operation: 'write',
           requestResourceData: values,
         }, err));
+        throw err;
     }
   };
 
@@ -233,7 +246,17 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       const monthlyInterestRate = interestRate / 100;
       const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
       const totalLoanAmount = amount + iof;
-      const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+      
+      let installmentAmount: number;
+        if (monthlyInterestRate > 0) {
+            installmentAmount =
+            totalLoanAmount *
+            (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) /
+            (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+        } else {
+            installmentAmount = totalLoanAmount / numInstallments;
+        }
+
       
       let remainingBalance = totalLoanAmount;
       const installments = Array.from({ length: numInstallments }).map((_, i) => {
@@ -255,8 +278,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       const updatedLoanData = {
         amount,
         interestRate,
-        iofRate,
-        iofValue,
+        iofRate: iofRate || 0,
+        iofValue: iofValue || 0,
         startDate,
         installments,
         payments: [], // Resets payments on edit
@@ -344,15 +367,12 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
         // Create a new updated installment object
         const newPaidAmount = installmentToUpdate.paidAmount + paymentAmount;
-        if (newPaidAmount > installmentToUpdate.amount) {
-            // throw new Error("Valor do pagamento excede o valor devido da parcela.");
-        }
+        
+        installmentToUpdate.paidAmount = parseFloat(newPaidAmount.toFixed(2));
 
-        installmentToUpdate.paidAmount = newPaidAmount;
-
-        if (newPaidAmount >= installmentToUpdate.amount) {
+        if (newPaidAmount >= installmentToUpdate.amount - 0.01) { // Tolerance for float precision
           installmentToUpdate.status = 'Pago';
-        } else if (newPaidAmount > 0) {
+        } else {
           installmentToUpdate.status = 'Parcialmente Pago';
         }
         
@@ -407,6 +427,42 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             path: `loans/${loanId} ou accounts/${destinationAccountId}`,
             operation: 'update',
         }, err));
+    }
+  };
+
+  const createTransaction = async (values: NewTransactionFormValues) => {
+    if (!firestore) return;
+
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const accountRef = doc(firestore, 'accounts', values.accountId);
+            const accountDoc = await transaction.get(accountRef);
+            if (!accountDoc.exists()) throw new Error("Conta não encontrada.");
+
+            const accountData = accountDoc.data() as Account;
+            
+            const newBalance = values.type === 'Receita' 
+                ? accountData.balance + values.amount
+                : accountData.balance - values.amount;
+
+            const newTransaction: Transaction = {
+                id: nanoid(10),
+                ...values
+            };
+
+            transaction.update(accountRef, {
+                balance: newBalance,
+                transactions: arrayUnion(newTransaction)
+            });
+        });
+    } catch (err: any) {
+        console.error("Erro ao criar transação:", err);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `accounts/${values.accountId}`,
+            operation: 'update',
+            requestResourceData: values,
+        }, err));
+        throw err;
     }
   };
   
@@ -525,6 +581,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     createClient,
     updateClient,
     deleteClient,
+    createTransaction,
   };
 
   return (
