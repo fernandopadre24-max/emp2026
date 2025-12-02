@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   CircleDollarSign,
   TrendingUp,
+  Mail,
 } from 'lucide-react';
 import type { Client, Loan, Payment } from '@/lib/types';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -71,6 +72,10 @@ function ClientCard({
         <div className="flex items-center gap-2 text-muted-foreground">
           <Hash className="h-4 w-4" />
           <span>{client.cpf}</span>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Mail className="h-4 w-4" />
+          <span>{client.email}</span>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
           <Phone className="h-4 w-4" />
@@ -144,6 +149,10 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
             <div className="flex items-center gap-2 text-muted-foreground">
                 <Hash className="h-4 w-4" />
                 <span>{client.cpf}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <span>{client.email}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="h-4 w-4" />

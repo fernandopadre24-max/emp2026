@@ -14,6 +14,11 @@
           "type": "string",
           "description": "The client's CPF document number."
         },
+        "email": {
+            "type": "string",
+            "format": "email",
+            "description": "The client's email address."
+        },
         "phone": {
           "type": "string",
           "description": "The client's phone number."
@@ -23,7 +28,7 @@
           "description": "The client's physical address."
         }
       },
-      "required": ["name", "cpf"]
+      "required": ["name", "cpf", "email"]
     },
     "Loan": {
       "title": "Loan",

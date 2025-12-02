@@ -144,6 +144,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             id,
             name: `${firstNames[index]} ${lastNames[index]}`,
             cpf: `000.000.000-0${index}`,
+            email: `${firstNames[index].toLowerCase()}.${lastNames[index].toLowerCase()}@example.com`,
             phone: `(11) 90000-000${index}`,
             address: `Rua Teste, ${index}, Bairro Exemplo`,
         };

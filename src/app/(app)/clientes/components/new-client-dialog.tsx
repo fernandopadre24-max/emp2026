@@ -32,6 +32,9 @@ const formSchema = z.object({
   cpf: z.string().min(11, {
     message: 'O CPF deve ter pelo menos 11 caracteres.',
   }),
+  email: z.string().email({
+    message: 'Por favor, insira um endereço de e-mail válido.',
+  }),
   phone: z.string().min(8, {
     message: 'O telefone é inválido.',
   }),
@@ -56,6 +59,7 @@ export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) 
     defaultValues: {
       name: '',
       cpf: '',
+      email: '',
       phone: '',
       address: '',
     },
@@ -88,7 +92,7 @@ export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) 
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
             <FormField
               control={form.control}
               name="name"
@@ -102,27 +106,42 @@ export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) 
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="cpf"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CPF</FormLabel>
-                  <FormControl>
-                    <Input placeholder="000.000.000-00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="000.000.000-00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(00) 90000-0000" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
              <FormField
               control={form.control}
-              name="phone"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Telefone</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="(00) 90000-0000" {...field} />
+                    <Input placeholder="cliente@email.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
