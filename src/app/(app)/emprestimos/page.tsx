@@ -298,7 +298,7 @@ export default function EmprestimosPage() {
                     </CardContent>
 
                     <CollapsibleContent>
-                        <div className="px-6 pb-4 bg-muted/20">
+                        <div className="px-6 pb-4 bg-muted/50">
                             <h4 className="mb-2 pt-4 font-semibold text-sm">Parcelas</h4>
                             <div className="rounded-md border max-h-60 overflow-y-auto">
                                 <Table>
