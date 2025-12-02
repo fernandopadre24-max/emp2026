@@ -154,7 +154,7 @@ export default function NewLoanPage() {
       })
       .safeParse({ amount, installments, interestRate, startDate });
   
-    if (!validationResult.success || !startDate) {
+    if (!validationResult.success || !startDate || amount <= 0 || installments <= 0 || interestRate < 0) {
       setSimulation(null);
       return;
     }
@@ -163,12 +163,11 @@ export default function NewLoanPage() {
     const currentIof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
     const totalLoanAmount = amount + currentIof;
   
-    if (monthlyInterestRate <= 0 || installments <= 0) {
+    if (monthlyInterestRate <= 0) {
       setSimulation(null);
       return;
     }
   
-    // PMT = PV * [i * (1+i)^n] / [(1+i)^n - 1]
     const installmentAmount =
       totalLoanAmount *
       (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) /
@@ -181,13 +180,11 @@ export default function NewLoanPage() {
   
     let remainingBalance = totalLoanAmount;
     const simulatedInstallments: SimulatedInstallment[] = [];
-    let totalInterestPaid = 0;
-  
+    
     for (let i = 1; i <= installments; i++) {
       const interestPayment = remainingBalance * monthlyInterestRate;
       const principalPayment = installmentAmount - interestPayment;
       remainingBalance -= principalPayment;
-      totalInterestPaid += interestPayment;
   
       const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
   
@@ -200,7 +197,8 @@ export default function NewLoanPage() {
       });
     }
   
-    const totalAmountPaid = totalLoanAmount + totalInterestPaid;
+    const totalAmountPaid = installmentAmount * installments;
+    const totalInterestPaid = totalAmountPaid - totalLoanAmount;
   
     setSimulation({
       installments: simulatedInstallments,
@@ -215,6 +213,7 @@ export default function NewLoanPage() {
     iofRate,
     iofValue,
     isSimulationEnabled,
+    form,
   ]);
 
 
