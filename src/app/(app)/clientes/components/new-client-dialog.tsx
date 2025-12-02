@@ -71,7 +71,13 @@ export function ClientDialog({ isOpen, onOpenChange, clientToEdit }: ClientDialo
   React.useEffect(() => {
     if (isOpen) {
       if (isEditMode && clientToEdit) {
-        form.reset(clientToEdit);
+        form.reset({
+          name: clientToEdit.name || '',
+          cpf: clientToEdit.cpf || '',
+          email: clientToEdit.email || '',
+          phone: clientToEdit.phone || '',
+          address: clientToEdit.address || '',
+        });
       } else {
         form.reset({
           name: '',
