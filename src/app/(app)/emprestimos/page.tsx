@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Banknote, Calendar, Percent, FileSpreadsheet, ChevronDown, TrendingUp, DollarSign } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Banknote, Calendar, Percent, FileSpreadsheet, ChevronDown, TrendingUp, DollarSign, Landmark } from 'lucide-react';
 import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,7 @@ type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' 
 type Installment = Loan['installments'][0];
 
 export default function EmprestimosPage() {
-  const { loans, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
+  const { loans, accounts, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
   const [activeFilter, setActiveFilter] = React.useState<LoanStatusFilter>('Todos');
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
   const [editingLoan, setEditingLoan] = React.useState<Loan | null>(null);
@@ -229,6 +229,7 @@ export default function EmprestimosPage() {
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
           const progress = totalInstallments > 0 ? (paidInstallments / totalInstallments) * 100 : 0;
           const totalAmountPayable = loan.installments.reduce((acc, i) => acc + i.amount, 0);
+          const loanAccount = accounts.find(acc => acc.id === loan.accountId);
 
           const nextInstallment = loan.installments.find(i => i.status === 'Pendente' || i.status === 'Parcialmente Pago');
 
@@ -279,6 +280,10 @@ export default function EmprestimosPage() {
                              <div className="space-y-1">
                                 <p className="text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Total a Pagar</p>
                                 <p className="font-semibold">{formatCurrency(totalAmountPayable)}</p>
+                            </div>
+                             <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-1"><Landmark className="w-3 h-3" /> Conta de Origem</p>
+                                <p className="font-semibold">{loanAccount?.name || 'N/A'}</p>
                             </div>
                             {nextInstallment && (
                                 <div className="space-y-1">
