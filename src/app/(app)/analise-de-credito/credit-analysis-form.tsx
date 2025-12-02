@@ -19,13 +19,13 @@ import { runCreditAnalysis, type AnalysisResult } from './actions';
 import { Loader2, ThumbsUp, ThumbsDown, AlertCircle, UserCheck, UserX, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { formatCPF } from '@/lib/utils';
+import { formatCPF, validateCPF } from '@/lib/utils';
 import type { Client } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
-  cpf: z.string().min(14, {
-    message: 'O CPF deve ter 11 dígitos.',
+  cpf: z.string().refine(validateCPF, {
+    message: 'O CPF informado é inválido.',
   }),
   loanAmount: z.coerce.number().positive({ message: 'O valor do empréstimo deve ser positivo.' }),
   loanPurpose: z.string().min(5, { message: 'O propósito do empréstimo deve ter pelo menos 5 caracteres.' }),

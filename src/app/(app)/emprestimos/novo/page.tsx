@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatCurrency, formatCPF, formatPhone } from '@/lib/utils';
+import { formatCurrency, formatCPF, formatPhone, validateCPF } from '@/lib/utils';
 import { add } from 'date-fns';
 import type { Client } from '@/lib/types';
 import { useFinancialData } from '@/context/financial-context';
@@ -92,7 +92,7 @@ export default function NewLoanPage() {
   const refinedSchema = formSchema.superRefine((data, ctx) => {
     if (data.isNewClient) {
         if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
-        if (!data.borrowerCpf || data.borrowerCpf.replace(/\D/g, '').length !== 11) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF deve ter 11 dígitos.", path: ["borrowerCpf"] });
+        if (!data.borrowerCpf || !validateCPF(data.borrowerCpf)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF informado é inválido.", path: ["borrowerCpf"] });
     } else {
         if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
     }

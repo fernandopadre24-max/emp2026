@@ -25,14 +25,14 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialData } from '@/context/financial-context';
 import type { Client } from '@/lib/types';
-import { formatCPF, formatPhone } from '@/lib/utils';
+import { formatCPF, formatPhone, validateCPF } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(3, {
     message: 'O nome do cliente deve ter pelo menos 3 caracteres.',
   }),
-  cpf: z.string().min(14, {
-    message: 'O CPF deve ter 11 dígitos.',
+  cpf: z.string().refine(validateCPF, {
+    message: 'O CPF informado é inválido.',
   }),
   email: z.string().email({
     message: 'Por favor, insira um endereço de e-mail válido.',
