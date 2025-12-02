@@ -58,19 +58,29 @@ export async function runCreditAnalysis(
       const loansRef = db.collection('loans');
       const loansSnapshot = await loansRef.where('clientId', '==', foundClient.id).get();
       
-      const clientLoans = loansSnapshot.docs.map(doc => {
+      const clientLoansData = await Promise.all(loansSnapshot.docs.map(async (doc) => {
         const data = doc.data();
-        // Ensure installments and payments are arrays
+
+        // Since installments and payments are subcollections, we need to fetch them.
+        // In the context of the Loan type, they are arrays on the object. We will simulate that here.
+        const installmentsSnapshot = await doc.ref.collection('installments').get();
+        const installments = installmentsSnapshot.docs.map(iDoc => iDoc.data());
+
+        const paymentsSnapshot = await doc.ref.collection('payments').get();
+        const payments = paymentsSnapshot.docs.map(pDoc => pDoc.data());
+
         return {
           ...data,
-          installments: data.installments || [],
-          payments: data.payments || [],
+          id: doc.id,
+          installments: installments || [],
+          payments: payments || [],
         } as Loan;
-      });
+      }));
+
 
       borrowerData = {
         profile: foundClient,
-        loanHistory: clientLoans.map(loan => ({
+        loanHistory: clientLoansData.map(loan => ({
           amount: loan.amount,
           status: loan.status,
           startDate: loan.startDate,
@@ -78,8 +88,8 @@ export async function runCreditAnalysis(
           paidInstallments: loan.installments.filter(i => i.status === 'Pago').length
         })),
         paymentSummary: {
-          totalPaid: clientLoans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0),
-          overdueInstallments: clientLoans.flatMap(l => l.installments).filter(i => i.status === 'Atrasado').length,
+          totalPaid: clientLoansData.flatMap(l => l.payments || []).reduce((acc, p) => acc + p.amount, 0),
+          overdueInstallments: clientLoansData.flatMap(l => l.installments || []).filter(i => i.status === 'Atrasado').length,
         }
       };
     } else {
