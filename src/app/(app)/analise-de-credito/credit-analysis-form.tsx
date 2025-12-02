@@ -14,33 +14,34 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { runCreditAnalysis } from './actions';
-import { type CreditRiskOutput } from '@/ai/flows/credit-risk-assessment';
-import { Loader2, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
+import { runCreditAnalysis, type AnalysisResult } from './actions';
+import { Loader2, ThumbsUp, ThumbsDown, AlertCircle, UserCheck, UserX, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { formatCPF } from '@/lib/utils';
+import type { Client } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 const formSchema = z.object({
-  borrowerData: z.string().min(50, {
-    message: 'Forneça detalhes suficientes sobre o mutuário (mínimo 50 caracteres).',
+  cpf: z.string().min(14, {
+    message: 'O CPF deve ter 11 dígitos.',
   }),
   loanAmount: z.coerce.number().positive({ message: 'O valor do empréstimo deve ser positivo.' }),
-  loanPurpose: z.string().min(10, { message: 'O propósito do empréstimo deve ter pelo menos 10 caracteres.' }),
+  loanPurpose: z.string().min(5, { message: 'O propósito do empréstimo deve ter pelo menos 5 caracteres.' }),
 });
 
 export function CreditAnalysisForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<CreditRiskOutput | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      borrowerData: '',
+      cpf: '',
       loanAmount: 1000,
-      loanPurpose: '',
+      loanPurpose: 'Despesas pessoais',
     },
   });
 
@@ -48,7 +49,7 @@ export function CreditAnalysisForm() {
     setIsLoading(true);
     setResult(null);
     try {
-      const analysisResult = await runCreditAnalysis(values);
+      const analysisResult = await runCreditAnalysis(values.cpf, values.loanAmount, values.loanPurpose);
       setResult(analysisResult);
     } catch (error) {
       toast({
@@ -64,11 +65,11 @@ export function CreditAnalysisForm() {
   const getRiskBadgeVariant = (riskLevel: 'Low' | 'Medium' | 'High' | undefined) => {
     switch (riskLevel) {
       case 'Low':
-        return 'default'; // Green
+        return 'default';
       case 'Medium':
-        return 'secondary'; // Gray
+        return 'secondary';
       case 'High':
-        return 'destructive'; // Red
+        return 'destructive';
       default:
         return 'secondary';
     }
@@ -77,7 +78,7 @@ export function CreditAnalysisForm() {
   const getRiskIcon = (riskLevel: 'Low' | 'Medium' | 'High' | undefined) => {
     switch (riskLevel) {
         case 'Low':
-            return <ThumbsUp className="h-6 w-6 text-primary" />;
+            return <ThumbsUp className="h-6 w-6 text-green-500" />;
         case 'Medium':
             return <AlertCircle className="h-6 w-6 text-yellow-500" />;
         case 'High':
@@ -92,22 +93,22 @@ export function CreditAnalysisForm() {
       <Card>
         <CardHeader>
           <CardTitle>Dados para Análise</CardTitle>
-          <CardDescription>Preencha as informações abaixo para que a IA possa gerar uma análise de risco.</CardDescription>
+          <CardDescription>Preencha o CPF do cliente e os detalhes do empréstimo para a análise de risco.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="borrowerData"
+                name="cpf"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Dados do Mutuário</FormLabel>
+                    <FormLabel>CPF do Cliente</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Ex: Cliente com bom histórico de crédito, renda mensal de R$5000, sem dívidas pendentes..."
-                        className="min-h-[120px]"
+                      <Input
+                        placeholder="000.000.000-00"
                         {...field}
+                         onChange={(e) => field.onChange(formatCPF(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -149,7 +150,10 @@ export function CreditAnalysisForm() {
                     Analisando...
                   </>
                 ) : (
-                  'Realizar Análise'
+                  <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Realizar Análise
+                  </>
                 )}
               </Button>
             </form>
@@ -166,7 +170,7 @@ export function CreditAnalysisForm() {
           {isLoading && (
             <div className="flex h-full flex-col items-center justify-center gap-4">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-muted-foreground">Aguarde, a IA está processando os dados...</p>
+              <p className="text-muted-foreground">Aguarde, a IA está consultando dados e processando...</p>
             </div>
           )}
           {result && !isLoading && (
@@ -174,21 +178,37 @@ export function CreditAnalysisForm() {
                 <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
                         <p className="text-sm text-muted-foreground">Nível de Risco</p>
-                        <Badge variant={getRiskBadgeVariant(result.riskLevel)} className="text-lg">
-                            {result.riskLevel === 'Low' ? 'Baixo' : result.riskLevel === 'Medium' ? 'Médio' : 'Alto'}
+                        <Badge variant={getRiskBadgeVariant(result.aiResponse.riskLevel)} className="text-lg">
+                            {result.aiResponse.riskLevel === 'Low' ? 'Baixo' : result.aiResponse.riskLevel === 'Medium' ? 'Médio' : 'Alto'}
                         </Badge>
                     </div>
-                    {getRiskIcon(result.riskLevel)}
+                    {getRiskIcon(result.aiResponse.riskLevel)}
                 </div>
               
               <div>
-                <h3 className="font-semibold">Fatores de Risco</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{result.riskFactors}</p>
+                <h3 className="font-semibold">Fatores de Risco (Análise IA)</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{result.aiResponse.riskFactors}</p>
               </div>
               <div>
-                <h3 className="font-semibold">Ação Recomendada</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{result.recommendedAction}</p>
+                <h3 className="font-semibold">Ação Recomendada (Análise IA)</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{result.aiResponse.recommendedAction}</p>
               </div>
+              <Separator />
+               <div>
+                 <h3 className="font-semibold mb-2">Dados Considerados</h3>
+                {result.clientExists && result.clientData ? (
+                    <div className="space-y-2 text-sm p-3 bg-muted/50 rounded-lg">
+                        <p className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-green-500"/> Cliente encontrado no banco de dados.</p>
+                        <p><strong>Nome:</strong> {result.clientData.name}</p>
+                        <p><strong>Telefone:</strong> {result.clientData.phone}</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2 text-sm p-3 bg-destructive/10 text-destructive-foreground rounded-lg">
+                        <p className="flex items-center gap-2"><UserX className="h-4 w-4 text-destructive"/> Cliente não encontrado no banco de dados.</p>
+                        <p className="text-xs">A análise foi realizada com base em um cenário hipotético.</p>
+                    </div>
+                )}
+               </div>
             </div>
           )}
           {!result && !isLoading && (

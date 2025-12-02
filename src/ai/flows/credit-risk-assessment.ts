@@ -6,14 +6,14 @@
  * It uses AI to analyze historical data and available information to provide a risk assessment.
  * - assessCreditRisk - The function to assess credit risk.
  * - CreditRiskInput - The input type for the assessCreditRisk function.
- * - CreditRiskOutput - The output type for the assessCreditRisk function.
+ * - CreditRiskOutput - The output type for the assessCreditrisk function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const CreditRiskInputSchema = z.object({
-  borrowerData: z.string().describe('Detailed information about the borrower, including financial history, credit score, and other relevant data.'),
+  borrowerData: z.string().describe('Detailed information about the borrower, including financial history, credit score, loan history, payment performance and other relevant data. This data will be in JSON format.'),
   loanAmount: z.number().describe('The amount of the loan requested.'),
   loanPurpose: z.string().describe('The stated purpose of the loan.'),
 });
@@ -35,18 +35,20 @@ const assessCreditRiskPrompt = ai.definePrompt({
   input: {schema: CreditRiskInputSchema},
   output: {schema: CreditRiskOutputSchema},
   prompt: `You are an expert credit risk analyst.
-  Assess the credit risk of a borrower based on the following information:
+  Assess the credit risk of a borrower based on the following information provided in JSON format:
 
   Borrower Data: {{{borrowerData}}}
   Loan Amount: {{{loanAmount}}}
   Loan Purpose: {{{loanPurpose}}}
 
-  Provide a risk assessment, including the risk level (Low, Medium, or High), the key risk factors, and a recommended action (approve, deny, or request additional information).
+  Analyze the provided data, which includes the client's profile, their loan history (if any), and payment performance.
+  
+  Based on your analysis, provide a comprehensive risk assessment. Your output must include:
+  - riskLevel: The assessed risk level for the borrower (Low, Medium, or High).
+  - riskFactors: A concise summary of the key factors that led to your risk assessment. Mention positive and negative points.
+  - recommendedAction: A clear recommended action (e.g., "Approve Loan", "Deny Loan", "Approve with caution", "Request more documents").
 
-  Ensure that the output is structured according to the CreditRiskOutputSchema, including descriptions for each field:
-  - riskLevel: The assessed risk level of the borrower.
-  - riskFactors: A summary of the key factors contributing to the risk assessment.
-  - recommendedAction: Recommended action based on the risk assessment.
+  Ensure that the output is structured according to the CreditRiskOutputSchema.
   `,
 });
 
