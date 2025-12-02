@@ -178,7 +178,7 @@ export default function EmprestimosPage() {
         </div>
       </div>
 
-      <div className="flex gap-6 overflow-x-auto pb-4">
+      <div className="grid grid-cols-1 gap-6">
         {filteredLoans.map(loan => {
           const totalInstallments = loan.installments.length;
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
@@ -206,7 +206,7 @@ export default function EmprestimosPage() {
           };
 
           return (
-            <Card key={loan.id} className="flex flex-col w-[380px] shrink-0">
+            <Card key={loan.id} className="flex flex-col">
               <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
