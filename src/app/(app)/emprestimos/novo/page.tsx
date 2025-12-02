@@ -133,55 +133,53 @@ export default function NewLoanPage() {
   const isNewClient = form.watch('isNewClient');
   
   const watchedValues = form.watch(['amount', 'installments', 'interestRate', 'startDate', 'iofRate', 'iofValue']);
+
   React.useEffect(() => {
-    const [amount, installments, interestRate, startDate] = watchedValues;
-    if (amount && installments && interestRate !== undefined && startDate) {
-      handleSimulate();
-    }
-  }, [watchedValues, form.formState.isValid]);
+    const handleSimulate = () => {
+      const values = form.getValues();
+      const { amount, installments, interestRate, startDate, iofRate, iofValue } = values;
 
-
-  function handleSimulate() {
-    form.trigger();
-    if (!form.formState.isValid) {
+      const validationResult = formSchema.pick({ amount: true, installments: true, interestRate: true, startDate: true }).safeParse(values);
+      if (!validationResult.success) {
         setSimulation(null);
         return;
+      }
+  
+      const monthlyInterestRate = interestRate / 100;
+      const iof = iofValue || (iofRate ? amount * (iofRate / 100) : 0);
+      const totalLoanAmount = amount + iof;
+  
+      const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
+  
+      let remainingBalance = totalLoanAmount;
+      const simulatedInstallments: SimulatedInstallment[] = [];
+  
+      for (let i = 1; i <= installments; i++) {
+          const interest = remainingBalance * monthlyInterestRate;
+          const principal = installmentAmount - interest;
+          remainingBalance -= principal;
+  
+          const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
+  
+          simulatedInstallments.push({
+              number: i,
+              dueDate: dueDate.toLocaleDateString('pt-BR'),
+              amount: installmentAmount,
+              principal: principal,
+              interest: interest,
+          });
+      }
+      
+      setSimulation({
+        installments: simulatedInstallments,
+        totalAmount: installmentAmount * installments,
+        totalInterest: (installmentAmount * installments) - amount,
+      });
     }
 
-    const values = form.getValues();
-    const { amount, installments, interestRate, startDate } = values;
+    handleSimulate();
+  }, [watchedValues, form]);
 
-    const monthlyInterestRate = interestRate / 100;
-    const iof = values.iofValue || (values.iofRate ? amount * (values.iofRate / 100) : 0);
-    const totalLoanAmount = amount + iof;
-
-    const installmentAmount = totalLoanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, installments)) / (Math.pow(1 + monthlyInterestRate, installments) - 1);
-
-    let remainingBalance = totalLoanAmount;
-    const simulatedInstallments: SimulatedInstallment[] = [];
-
-    for (let i = 1; i <= installments; i++) {
-        const interest = remainingBalance * monthlyInterestRate;
-        const principal = installmentAmount - interest;
-        remainingBalance -= principal;
-
-        const dueDate = add(new Date(`${startDate}T00:00:00`), { months: i });
-
-        simulatedInstallments.push({
-            number: i,
-            dueDate: dueDate.toLocaleDateString('pt-BR'),
-            amount: installmentAmount,
-            principal: principal,
-            interest: interest,
-        });
-    }
-    
-    setSimulation({
-      installments: simulatedInstallments,
-      totalAmount: installmentAmount * installments,
-      totalInterest: (installmentAmount * installments) - amount,
-    });
-  }
 
   async function onSubmit(values: z.infer<typeof refinedSchema>) {
     setIsSubmitting(true);
