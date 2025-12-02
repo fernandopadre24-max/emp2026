@@ -190,7 +190,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             };
             transaction.set(newClientRef, newClientData);
         }
-
+        
+        const newLoanCode = `EMP-${(loansData.length + 1).toString().padStart(3, '0')}`;
         const newBalance = accountData.balance - values.amount;
         const loanTransaction: Transaction = {
             id: nanoid(10),
@@ -200,6 +201,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             type: 'Despesa',
             category: 'Empréstimo Concedido',
             referenceId: loanRef.id,
+            referenceCode: newLoanCode,
         };
         transaction.update(accountRef, { 
             balance: newBalance,
@@ -241,8 +243,6 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
                 status: 'Pendente' as const,
             };
         });
-        
-        const newLoanCode = `EMP-${(loansData.length + 1).toString().padStart(3, '0')}`;
 
         // Create loan document
         const newLoan: Omit<Loan, 'payments'> = {
@@ -446,6 +446,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           type: 'Receita',
           category: 'Recebimento Empréstimo',
           referenceId: loanId,
+          referenceCode: loanData.code,
         };
 
         // 3. WRITE all changes at the end

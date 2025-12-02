@@ -52,6 +52,7 @@ export type Transaction = {
   type: 'Receita' | 'Despesa';
   category: string;
   referenceId?: string; // e.g., Loan ID or Payment ID
+  referenceCode?: string; // e.g., Loan Code
 }
 
 export type Account = {

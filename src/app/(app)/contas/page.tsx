@@ -4,7 +4,7 @@ import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { Banknote, PlusCircle, ArrowUpRight, DollarSign, ArrowUp, ArrowDown, ChevronDown, Edit, Trash2, FileText } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
@@ -178,7 +178,15 @@ export default function ContasPage() {
                                         {account.transactions?.length > 0 ? account.transactions.slice(0,5).map((transaction) => (
                                             <TableRow key={transaction.id}>
                                             <TableCell>{new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                                            <TableCell>{transaction.description}</TableCell>
+                                            <TableCell>
+                                                {transaction.description}
+                                                {transaction.referenceCode && (
+                                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                        <FileText className="h-3 w-3" />
+                                                        <span>{transaction.referenceCode}</span>
+                                                    </div>
+                                                )}
+                                            </TableCell>
                                             <TableCell><Badge variant="secondary">{transaction.category}</Badge></TableCell>
                                             <TableCell className={cn(
                                                 "text-right font-medium",

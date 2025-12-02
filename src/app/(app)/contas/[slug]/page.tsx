@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, cn } from '@/lib/utils';
 import { notFound, useParams } from 'next/navigation';
-import { ArrowLeft, ArrowUp, ArrowDown, Download, PlusCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Download, PlusCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useFinancialData } from '@/context/financial-context';
@@ -113,7 +113,15 @@ export default function AccountStatementPage() {
               {account.transactions.map((transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell>{new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell>{transaction.description}</TableCell>
+                  <TableCell>
+                    {transaction.description}
+                    {transaction.referenceCode && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <FileText className="h-3 w-3" />
+                            <span>{transaction.referenceCode}</span>
+                        </div>
+                    )}
+                  </TableCell>
                   <TableCell><Badge variant="secondary">{transaction.category}</Badge></TableCell>
                   <TableCell className={cn(
                     "text-right font-medium",
