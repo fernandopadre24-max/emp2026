@@ -178,7 +178,7 @@ export default function EmprestimosPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="flex gap-6 overflow-x-auto pb-4">
         {filteredLoans.map(loan => {
           const totalInstallments = loan.installments.length;
           const paidInstallments = loan.installments.filter(i => i.status === 'Pago').length;
@@ -206,7 +206,7 @@ export default function EmprestimosPage() {
           };
 
           return (
-            <Card key={loan.id} className="flex flex-col">
+            <Card key={loan.id} className="flex flex-col w-[380px] shrink-0">
               <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
@@ -263,7 +263,7 @@ export default function EmprestimosPage() {
           );
         })}
         {filteredLoans.length === 0 && (
-          <div className="col-span-full flex h-40 items-center justify-center rounded-lg border border-dashed text-center">
+          <div className="col-span-full flex h-40 w-full items-center justify-center rounded-lg border border-dashed text-center">
             <p className="text-muted-foreground">Nenhum empréstimo encontrado para o filtro "{activeFilter}".</p>
           </div>
         )}
