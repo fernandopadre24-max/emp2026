@@ -31,6 +31,7 @@ import type { Client, Loan, Payment } from '@/lib/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useFinancialData } from '@/context/financial-context';
+import { NewClientDialog } from './components/new-client-dialog';
 
 function ClientCard({
   client,
@@ -237,8 +238,16 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
 
 export default function ClientesPage() {
   const { clients, loans, accounts } = useFinancialData();
-  const [selectedClientId, setSelectedClientId] = React.useState<string | null>(clients[2]?.id || null);
+  const [selectedClientId, setSelectedClientId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
+  const [isNewClientOpen, setNewClientOpen] = React.useState(false);
+  
+  React.useEffect(() => {
+    if (!selectedClientId && clients.length > 0) {
+      setSelectedClientId(clients[0].id);
+    }
+  }, [clients, selectedClientId]);
+
 
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -253,40 +262,43 @@ export default function ClientesPage() {
   const selectedClient = clients.find(c => c.id === selectedClientId);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[450px_1fr] gap-8 items-start">
-        {/* Left Column */}
-        <div className="space-y-4">
-             <div className="flex items-center gap-2">
-                <div className="relative w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Buscar por nome ou CPF..." 
-                        className="pl-9"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+    <>
+        <div className="grid grid-cols-1 md:grid-cols-[450px_1fr] gap-8 items-start">
+            {/* Left Column */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="relative w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Buscar por nome ou CPF..." 
+                            className="pl-9"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <Button className="shrink-0" onClick={() => setNewClientOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Novo Cliente
+                    </Button>
                 </div>
-                <Button className="shrink-0">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Novo Cliente
-                </Button>
+                <div className="space-y-4 h-[calc(100vh-150px)] overflow-y-auto pr-2">
+                    {filteredClients.map((client) => (
+                    <ClientCard
+                        key={client.id}
+                        client={client}
+                        onSelect={() => handleSelectClient(client.id)}
+                        isSelected={selectedClientId === client.id}
+                    />
+                    ))}
+                </div>
             </div>
-            <div className="space-y-4 h-[calc(100vh-150px)] overflow-y-auto pr-2">
-                {filteredClients.map((client) => (
-                <ClientCard
-                    key={client.id}
-                    client={client}
-                    onSelect={() => handleSelectClient(client.id)}
-                    isSelected={selectedClientId === client.id}
-                />
-                ))}
+            
+            {/* Right Column */}
+            <div className="h-[calc(100vh-100px)] overflow-y-auto pr-2">
+            <ClientDetails client={selectedClient || null} loans={loans} accounts={accounts} />
             </div>
         </div>
-        
-        {/* Right Column */}
-        <div className="h-[calc(100vh-100px)] overflow-y-auto pr-2">
-           <ClientDetails client={selectedClient || null} loans={loans} accounts={accounts} />
-        </div>
-    </div>
+        <NewClientDialog isOpen={isNewClientOpen} onOpenChange={setNewClientOpen} />
+    </>
   );
 }

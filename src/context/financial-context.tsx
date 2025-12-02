@@ -11,6 +11,7 @@ import { writeBatch, collection, doc, serverTimestamp, Timestamp, setDoc, addDoc
 import { nanoid } from 'nanoid';
 import { add, format } from 'date-fns';
 import type { NewAccountFormValues } from '@/app/(app)/contas/components/new-account-dialog';
+import type { NewClientFormValues } from '@/app/(app)/clientes/components/new-client-dialog';
 
 interface FinancialDataContextType {
   accounts: Account[];
@@ -30,6 +31,7 @@ interface FinancialDataContextType {
   ) => void;
   seedDatabase: () => Promise<void>;
   createAccount: (values: NewAccountFormValues) => void;
+  createClient: (values: NewClientFormValues) => void;
 }
 
 const FinancialDataContext = React.createContext<FinancialDataContextType | undefined>(undefined);
@@ -72,6 +74,20 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         }, err));
     }
   }
+  
+  const createClient = async (values: NewClientFormValues) => {
+    if (!firestore) return;
+    try {
+      const clientRef = doc(collection(firestore, 'clients'));
+      await setDoc(clientRef, { ...values, id: clientRef.id });
+    } catch(err) {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'clients',
+          operation: 'create',
+          requestResourceData: values,
+        }, err));
+    }
+  }
 
 
   const createLoan = (values: NewLoanFormValues) => {
@@ -107,7 +123,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
     // 1. Seed Accounts (2)
     const accountIds = ['nubank', 'itau'];
-    const accountNames = ['Nubank', 'Itau'];
+    const accountNames = ['Nubank', 'Itaú'];
     accountIds.forEach((id, index) => {
       const accountRef = doc(firestore, 'accounts', id);
       batch.set(accountRef, {
@@ -148,7 +164,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         const startDate = format(add(new Date(), { months: -Math.floor(Math.random() * 6) }), 'yyyy-MM-dd');
         
         const monthlyInterestRate = interestRate / 100;
-        const installmentAmount = (amount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -numInstallments));
+        const installmentAmount = amount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
 
         let remainingBalance = amount;
         const installments = Array.from({ length: numInstallments }).map((_, j) => {
@@ -197,6 +213,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     registerPayment,
     seedDatabase,
     createAccount,
+    createClient,
   };
 
   return (
