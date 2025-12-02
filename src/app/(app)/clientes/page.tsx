@@ -32,16 +32,22 @@ import type { Client, Loan, Payment } from '@/lib/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useFinancialData } from '@/context/financial-context';
-import { NewClientDialog } from './components/new-client-dialog';
+import { ClientDialog } from './components/new-client-dialog';
+import { DeleteAlertDialog } from '@/components/delete-alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 function ClientCard({
   client,
   onSelect,
   isSelected,
+  onEdit,
+  onDelete,
 }: {
   client: Client;
   onSelect: () => void;
   isSelected: boolean;
+  onEdit: (client: Client) => void;
+  onDelete: (client: Client) => void;
 }) {
   return (
     <Card
@@ -59,12 +65,12 @@ function ClientCard({
             </div>
             <div>
               <CardTitle className="text-lg">{client.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">ID: {client.id}</p>
+              <p className="text-sm text-muted-foreground">ID: {client.id.substring(0, 8)}</p>
             </div>
           </div>
           <div className="flex gap-1">
-             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Edit className="h-4 w-4" /></Button>
-             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={(e) => { e.stopPropagation(); onEdit(client);}}><Edit className="h-4 w-4" /></Button>
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(client);}}><Trash2 className="h-4 w-4" /></Button>
           </div>
         </div>
       </CardHeader>
@@ -127,10 +133,6 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
                     <Download className="mr-2 h-4 w-4" />
                     Exportar CSV
                 </Button>
-                <Button variant="ghost">
-                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar para a Lista
-                </Button>
             </div>
         </div>
       <Card>
@@ -141,7 +143,7 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
             </div>
             <div>
               <CardTitle className="text-xl">{client.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">ID: {client.id}</p>
+              <p className="text-sm text-muted-foreground">ID: {client.id.substring(0, 8)}</p>
             </div>
           </div>
         </CardHeader>
@@ -192,7 +194,7 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
                     <div key={loan.id} className="flex items-center justify-between p-3 rounded-md bg-card-foreground/5">
                         <div>
                             <p className="font-semibold">{formatCurrency(loan.amount)}</p>
-                            <p className="text-xs text-muted-foreground">{loan.id} • Início: {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                            <p className="text-xs text-muted-foreground">{loan.id.substring(0,8)} • Início: {new Date(loan.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
                         </div>
                         <Badge variant={getStatusVariant(loan.status)}>{loan.status}</Badge>
                     </div>
@@ -223,7 +225,7 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
                       return (
                         <TableRow key={payment.id}>
                             <TableCell>{new Date(payment.paymentDate + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
-                            <TableCell className="font-mono text-xs">{payment.loanId}</TableCell>
+                            <TableCell className="font-mono text-xs">{payment.loanId.substring(0,8)}</TableCell>
                             <TableCell>{account?.name || 'N/D'}</TableCell>
                             <TableCell>
                                 <Badge variant="secondary">{payment.method || 'N/D'}</Badge>
@@ -246,20 +248,63 @@ function ClientDetails({ client, loans, accounts }: { client: Client | null; loa
 }
 
 export default function ClientesPage() {
-  const { clients, loans, accounts } = useFinancialData();
+  const { clients, loans, accounts, deleteClient } = useFinancialData();
   const [selectedClientId, setSelectedClientId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
-  const [isNewClientOpen, setNewClientOpen] = React.useState(false);
-  
+  const [isClientDialogOpen, setClientDialogOpen] = React.useState(false);
+  const [editingClient, setEditingClient] = React.useState<Client | null>(null);
+  const [deletingClient, setDeletingClient] = React.useState<Client | null>(null);
+  const { toast } = useToast();
+
   React.useEffect(() => {
     if (!selectedClientId && clients.length > 0) {
       setSelectedClientId(clients[0].id);
     }
   }, [clients, selectedClientId]);
 
-
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
+  };
+  
+  const handleOpenNewClient = () => {
+    setEditingClient(null);
+    setClientDialogOpen(true);
+  };
+
+  const handleOpenEditClient = (client: Client) => {
+    setEditingClient(client);
+    setClientDialogOpen(true);
+  };
+
+  const handleOpenDeleteClient = (client: Client) => {
+    setDeletingClient(client);
+  };
+
+  const handleDeleteClient = async () => {
+    if (!deletingClient) return;
+
+    // Check if client has active loans
+    const clientHasLoans = loans.some(loan => loan.clientId === deletingClient.id && loan.status !== 'Quitado' && loan.status !== 'Pago');
+    
+    if (clientHasLoans) {
+      toast({
+        variant: 'destructive',
+        title: 'Ação Bloqueada',
+        description: 'Não é possível excluir um cliente com empréstimos ativos.',
+      });
+      setDeletingClient(null);
+      return;
+    }
+
+    await deleteClient(deletingClient.id);
+    toast({
+      title: 'Cliente Excluído',
+      description: `O cliente "${deletingClient.name}" foi removido com sucesso.`,
+    });
+    setDeletingClient(null);
+    if (selectedClientId === deletingClient.id) {
+        setSelectedClientId(clients.length > 1 ? clients.find(c => c.id !== deletingClient.id)!.id : null);
+    }
   };
 
   const filteredClients = clients.filter(
@@ -285,7 +330,7 @@ export default function ClientesPage() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <Button className="shrink-0" onClick={() => setNewClientOpen(true)}>
+                    <Button className="shrink-0" onClick={handleOpenNewClient}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Novo Cliente
                     </Button>
@@ -297,6 +342,8 @@ export default function ClientesPage() {
                         client={client}
                         onSelect={() => handleSelectClient(client.id)}
                         isSelected={selectedClientId === client.id}
+                        onEdit={handleOpenEditClient}
+                        onDelete={handleOpenDeleteClient}
                     />
                     ))}
                 </div>
@@ -304,10 +351,21 @@ export default function ClientesPage() {
             
             {/* Right Column */}
             <div className="h-[calc(100vh-100px)] overflow-y-auto pr-2">
-            <ClientDetails client={selectedClient || null} loans={loans} accounts={accounts} />
+               <ClientDetails client={selectedClient || null} loans={loans} accounts={accounts} />
             </div>
         </div>
-        <NewClientDialog isOpen={isNewClientOpen} onOpenChange={setNewClientOpen} />
+        <ClientDialog 
+            isOpen={isClientDialogOpen} 
+            onOpenChange={setClientDialogOpen}
+            clientToEdit={editingClient}
+        />
+        <DeleteAlertDialog
+            isOpen={!!deletingClient}
+            onOpenChange={(isOpen) => !isOpen && setDeletingClient(null)}
+            onConfirm={handleDeleteClient}
+            title="Confirmar Exclusão"
+            description={`Tem certeza que deseja excluir o cliente "${deletingClient?.name}"? Esta ação não pode ser desfeita.`}
+        />
     </>
   );
 }

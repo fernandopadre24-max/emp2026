@@ -32,6 +32,8 @@ interface FinancialDataContextType {
   seedDatabase: () => Promise<void>;
   createAccount: (values: NewAccountFormValues) => Promise<void>;
   createClient: (values: NewClientFormValues) => Promise<void>;
+  updateClient: (id: string, values: NewClientFormValues) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
 }
 
 const FinancialDataContext = React.createContext<FinancialDataContextType | undefined>(undefined);
@@ -87,6 +89,31 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         }, err));
     });
   }
+
+  const updateClient = async (id: string, values: NewClientFormValues) => {
+    if (!firestore) return;
+    const clientRef = doc(firestore, 'clients', id);
+    updateDoc(clientRef, values).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `clients/${id}`,
+            operation: 'update',
+            requestResourceData: values,
+        }, err));
+    });
+  };
+
+  const deleteClient = async (id: string) => {
+    if (!firestore) return;
+    const clientRef = doc(firestore, 'clients', id);
+    // Note: This is a simple deletion. In a real-world app,
+    // you'd want to check for associated loans before deleting.
+    deleteDoc(clientRef).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `clients/${id}`,
+            operation: 'delete',
+        }, err));
+    });
+  };
 
 
   const createLoan = async (values: NewLoanFormValues) => {
@@ -313,26 +340,25 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         const installmentIndex = loanData.installments.findIndex(i => i.number === installmentNumber);
         if (installmentIndex === -1) throw new Error("Parcela não encontrada.");
 
-        const installmentToUpdate = loanData.installments[installmentIndex];
+        const installmentToUpdate = { ...loanData.installments[installmentIndex] };
 
         // Create a new updated installment object
         const newPaidAmount = installmentToUpdate.paidAmount + paymentAmount;
-        let newStatus = installmentToUpdate.status;
-        if (newPaidAmount >= installmentToUpdate.amount) {
-          newStatus = 'Pago';
-        } else if (newPaidAmount > 0) {
-          newStatus = 'Parcialmente Pago';
+        if (newPaidAmount > installmentToUpdate.amount) {
+            // throw new Error("Valor do pagamento excede o valor devido da parcela.");
         }
 
-        const updatedInstallment = {
-            ...installmentToUpdate,
-            paidAmount: newPaidAmount,
-            status: newStatus
-        };
+        installmentToUpdate.paidAmount = newPaidAmount;
+
+        if (newPaidAmount >= installmentToUpdate.amount) {
+          installmentToUpdate.status = 'Pago';
+        } else if (newPaidAmount > 0) {
+          installmentToUpdate.status = 'Parcialmente Pago';
+        }
         
         // Create new installments array
         const updatedInstallments = loanData.installments.map(inst => 
-            inst.number === installmentNumber ? updatedInstallment : inst
+            inst.number === installmentNumber ? installmentToUpdate : inst
         );
         
         // Create new payment object and updated payments array
@@ -497,6 +523,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     seedDatabase,
     createAccount,
     createClient,
+    updateClient,
+    deleteClient,
   };
 
   return (

@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useFinancialData } from '@/context/financial-context';
+import type { Client } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -45,14 +46,16 @@ const formSchema = z.object({
 
 export type NewClientFormValues = z.infer<typeof formSchema>;
 
-interface NewClientDialogProps {
+interface ClientDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  clientToEdit?: Client | null;
 }
 
-export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) {
+export function ClientDialog({ isOpen, onOpenChange, clientToEdit }: ClientDialogProps) {
   const { toast } = useToast();
-  const { createClient } = useFinancialData();
+  const { createClient, updateClient } = useFinancialData();
+  const isEditMode = !!clientToEdit;
 
   const form = useForm<NewClientFormValues>({
     resolver: zodResolver(formSchema),
@@ -66,19 +69,37 @@ export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) 
   });
   
   React.useEffect(() => {
-    if (!isOpen) {
-        form.reset();
+    if (isOpen) {
+      if (isEditMode && clientToEdit) {
+        form.reset(clientToEdit);
+      } else {
+        form.reset({
+          name: '',
+          cpf: '',
+          email: '',
+          phone: '',
+          address: '',
+        });
+      }
     }
-  }, [isOpen, form]);
+  }, [isOpen, isEditMode, clientToEdit, form]);
 
 
   function onSubmit(values: NewClientFormValues) {
-    createClient(values);
-    toast({
-      title: 'Cliente Criado!',
-      description: `O cliente "${values.name}" foi adicionado com sucesso.`,
-      className: 'bg-primary text-primary-foreground',
-    });
+    if (isEditMode && clientToEdit) {
+      updateClient(clientToEdit.id, values);
+      toast({
+        title: 'Cliente Atualizado!',
+        description: `O cliente "${values.name}" foi atualizado com sucesso.`,
+      });
+    } else {
+      createClient(values);
+      toast({
+        title: 'Cliente Criado!',
+        description: `O cliente "${values.name}" foi adicionado com sucesso.`,
+        className: 'bg-primary text-primary-foreground',
+      });
+    }
     onOpenChange(false);
   }
 
@@ -86,9 +107,9 @@ export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) 
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground border-border">
         <DialogHeader>
-          <DialogTitle>Novo Cliente</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
           <DialogDescription>
-            Adicione um novo cliente ao seu sistema.
+            {isEditMode ? 'Altere as informações do cliente abaixo.' : 'Adicione um novo cliente ao seu sistema.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -164,7 +185,7 @@ export function NewClientDialog({ isOpen, onOpenChange }: NewClientDialogProps) 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Criar Cliente</Button>
+              <Button type="submit">{isEditMode ? 'Salvar Alterações' : 'Criar Cliente'}</Button>
             </DialogFooter>
           </form>
         </Form>
