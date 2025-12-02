@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
-import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
+import type { NewLoanFormValues } from '@/app/(app)/emprestimos/novo/page';
 import { User as UserIcon, Library, Wallet } from 'lucide-react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -110,7 +110,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
                 cpf: values.borrowerCpf,
                 phone: values.borrowerPhone,
                 address: values.borrowerAddress,
-                email: 'n/a', // Assuming email is optional for now
+                email: values.email || 'n/a',
             };
             transaction.set(newClientRef, newClientData);
         }
@@ -422,7 +422,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         const startDate = format(add(new Date(), { months: -Math.floor(Math.random() * 6) }), 'yyyy-MM-dd');
         
         const monthlyInterestRate = interestRate / 100;
-        const installmentAmount = amount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments)) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
+        const installmentAmount = (amount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numInstallments))) / (Math.pow(1 + monthlyInterestRate, numInstallments) - 1);
 
         let remainingBalance = amount;
         const installments = Array.from({ length: numInstallments }).map((_, j) => {

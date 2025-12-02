@@ -63,6 +63,7 @@ const formSchema = z.object({
   borrowerCpf: z.string().optional(),
   borrowerPhone: z.string().optional(),
   borrowerAddress: z.string().optional(),
+  email: z.string().optional(),
   accountId: z.string().min(1, 'Selecione uma conta.'),
   amount: z.coerce.number().positive('O valor principal deve ser positivo.'),
   installments: z.coerce
@@ -90,8 +91,6 @@ export default function NewLoanPage() {
     if (data.isNewClient) {
         if (!data.borrowerName || data.borrowerName.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O nome é obrigatório (mín. 3 caracteres).", path: ["borrowerName"] });
         if (!data.borrowerCpf) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O CPF é obrigatório.", path: ["borrowerCpf"] });
-        if (!data.borrowerPhone) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O telefone é obrigatório.", path: ["borrowerPhone"] });
-        if (!data.borrowerAddress) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O endereço é obrigatório.", path: ["borrowerAddress"] });
     } else {
         if (!data.clientId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selecione um cliente.", path: ["clientId"] });
     }
@@ -115,6 +114,7 @@ export default function NewLoanPage() {
       borrowerCpf: '',
       borrowerPhone: '',
       borrowerAddress: '',
+      email: '',
       accountId: '',
       amount: 1000,
       installments: 12,
@@ -288,6 +288,19 @@ export default function NewLoanPage() {
                                     )}
                                 />
                             </div>
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="cliente@email.com" {...field} value={field.value || ''}/>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField
                                 control={form.control}
                                 name="borrowerAddress"
