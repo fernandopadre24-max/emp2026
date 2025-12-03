@@ -4,9 +4,9 @@
 // Follow the instructions in the Firebase console to configure your app
 // https://firebase.google.com/docs/web/setup
 export const firebaseConfig = {
-  apiKey: 'AIzaSyAiVGy0vlek9mplgUDhoCnaej--STTM02o',
-  authDomain: 'studio-2880807235-e930f.firebaseapp.com',
-  projectId: 'studio-2880807235-e930f',
-  appId: '1:279761542213:web:7b350222e4c8e49ffc172c',
-  messagingSenderId: '279761542213',
+  apiKey: 'AIzaSyD7a1gf69t9SwuInfaQFmL0tLi8KvYIIPA',
+  authDomain: 'studio-5054114940-51b33.firebaseapp.com',
+  projectId: 'studio-5054114940-51b33',
+  appId: '1:426695686323:web:edf1e0c345149fb8e9d8c6',
+  messagingSenderId: '426695686323',
 };
