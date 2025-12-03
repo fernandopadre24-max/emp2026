@@ -16,17 +16,19 @@ if (getApps().length === 0) {
     : undefined;
 
   if (!serviceAccount) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set or is invalid.');
+    // In a development or non-server environment, we might not have the service account.
+    // Let's not throw an error, but AI analysis will be limited.
+    console.warn('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. Credit analysis will be limited.');
+  } else {
+      initializeApp({
+        credential: cert(serviceAccount),
+        databaseURL: firebaseConfig.databaseURL,
+        projectId: firebaseConfig.projectId,
+      });
   }
-
-  initializeApp({
-    credential: cert(serviceAccount),
-    databaseURL: firebaseConfig.databaseURL,
-    projectId: firebaseConfig.projectId,
-  });
 }
 
-const db = getFirestore();
+const db = getApps().length > 0 ? getFirestore() : null;
 
 export type AnalysisResult = {
   aiResponse: CreditRiskOutput;
@@ -37,7 +39,8 @@ export type AnalysisResult = {
 export async function runCreditAnalysis(
   cpf: string,
   loanAmount: number,
-  loanPurpose: string
+  loanPurpose: string,
+  userId?: string | null
 ): Promise<AnalysisResult> {
   try {
     const cleanCpf = cpf.replace(/\D/g, '');
@@ -45,55 +48,48 @@ export async function runCreditAnalysis(
     let clientExists = false;
     let foundClient: Client | undefined = undefined;
 
-    // Search for client by CPF
-    const clientsRef = db.collection('clients');
-    const clientSnapshot = await clientsRef.where('cpf', '==', cleanCpf).limit(1).get();
+    if (db && userId) {
+        // Search for client by CPF in the user's subcollection
+        const clientsRef = db.collection('users').doc(userId).collection('clients');
+        const clientSnapshot = await clientsRef.where('cpf', '==', cleanCpf).limit(1).get();
 
-    if (!clientSnapshot.empty) {
-      clientExists = true;
-      const clientDoc = clientSnapshot.docs[0];
-      foundClient = { id: clientDoc.id, ...clientDoc.data() } as Client;
+        if (!clientSnapshot.empty) {
+          clientExists = true;
+          const clientDoc = clientSnapshot.docs[0];
+          foundClient = { id: clientDoc.id, ...clientDoc.data() } as Client;
 
-      // If client exists, gather more data
-      const loansRef = db.collection('loans');
-      const loansSnapshot = await loansRef.where('clientId', '==', foundClient.id).get();
-      
-      const clientLoansData = await Promise.all(loansSnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-
-        // Since installments and payments are subcollections, we need to fetch them.
-        // In the context of the Loan type, they are arrays on the object. We will simulate that here.
-        const installmentsSnapshot = await doc.ref.collection('installments').get();
-        const installments = installmentsSnapshot.docs.map(iDoc => iDoc.data());
-
-        const paymentsSnapshot = await doc.ref.collection('payments').get();
-        const payments = paymentsSnapshot.docs.map(pDoc => pDoc.data());
-
-        return {
-          ...data,
-          id: doc.id,
-          installments: installments || [],
-          payments: payments || [],
-        } as Loan;
-      }));
+          // If client exists, gather more data from the user's loans
+          const loansRef = db.collection('users').doc(userId).collection('loans');
+          const loansSnapshot = await loansRef.where('clientId', '==', foundClient.id).get();
+          
+          const clientLoansData = loansSnapshot.docs.map(doc => {
+            const data = doc.data() as Loan;
+            return {
+              ...data,
+              id: doc.id,
+            };
+          });
 
 
-      borrowerData = {
-        profile: foundClient,
-        loanHistory: clientLoansData.map(loan => ({
-          amount: loan.amount,
-          status: loan.status,
-          startDate: loan.startDate,
-          installmentsCount: loan.installments.length,
-          paidInstallments: loan.installments.filter(i => i.status === 'Pago').length
-        })),
-        paymentSummary: {
-          totalPaid: clientLoansData.flatMap(l => l.payments || []).reduce((acc, p) => acc + p.amount, 0),
-          overdueInstallments: clientLoansData.flatMap(l => l.installments || []).filter(i => i.status === 'Atrasado').length,
+          borrowerData = {
+            profile: foundClient,
+            loanHistory: clientLoansData.map(loan => ({
+              amount: loan.amount,
+              status: loan.status,
+              startDate: loan.startDate,
+              installmentsCount: loan.installments.length,
+              paidInstallments: loan.installments.filter(i => i.status === 'Pago').length
+            })),
+            paymentSummary: {
+              totalPaid: clientLoansData.flatMap(l => l.payments || []).reduce((acc, p) => acc + p.amount, 0),
+              overdueInstallments: clientLoansData.flatMap(l => l.installments || []).filter(i => (i.status === 'Pendente' || i.status === 'Parcialmente Pago') && new Date(i.dueDate) < new Date()).length,
+            }
+          };
+        } else {
+            borrowerData.message = "No existing client found with this CPF for this user. Analysis will be based on general assumptions."
         }
-      };
     } else {
-        borrowerData.message = "No existing client found with this CPF. Analysis will be based on general assumptions."
+        borrowerData.message = "Database not available or user not logged in. Analysis will be based on general assumptions."
     }
 
     const aiInput: CreditRiskInput = {

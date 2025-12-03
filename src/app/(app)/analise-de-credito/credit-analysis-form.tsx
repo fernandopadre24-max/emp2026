@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCPF, validateCPF } from '@/lib/utils';
 import type { Client } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+import { useUser } from '@/firebase';
 
 const formSchema = z.object({
   cpf: z.string().refine(validateCPF, {
@@ -35,6 +36,7 @@ export function CreditAnalysisForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const { toast } = useToast();
+  const { user } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,7 +51,7 @@ export function CreditAnalysisForm() {
     setIsLoading(true);
     setResult(null);
     try {
-      const analysisResult = await runCreditAnalysis(values.cpf, values.loanAmount, values.loanPurpose);
+      const analysisResult = await runCreditAnalysis(values.cpf, values.loanAmount, values.loanPurpose, user?.uid);
       setResult(analysisResult);
     } catch (error) {
       toast({
@@ -143,7 +145,7 @@ export function CreditAnalysisForm() {
                   )}
                 />
               </div>
-              <Button type="submit" disabled={isLoading} className="w-full">
+              <Button type="submit" disabled={isLoading || !user} className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -156,6 +158,7 @@ export function CreditAnalysisForm() {
                   </>
                 )}
               </Button>
+               {!user && !isLoading && <p className="text-xs text-center text-muted-foreground">Você precisa estar logado para realizar uma análise.</p>}
             </form>
           </Form>
         </CardContent>

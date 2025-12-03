@@ -49,18 +49,20 @@ const FinancialDataContext = React.createContext<FinancialDataContextType | unde
 
 export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const [timeRange, setTimeRange] = React.useState<TimeRange>('all');
 
-  const accountsCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'accounts') : null), [firestore]);
-  const clientsCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'clients') : null), [firestore]);
-  const loansCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'loans') : null), [firestore]);
+  const userId = user?.uid;
+
+  const accountsCollection = useMemoFirebase(() => (firestore && userId ? collection(firestore, 'users', userId, 'accounts') : null), [firestore, userId]);
+  const clientsCollection = useMemoFirebase(() => (firestore && userId ? collection(firestore, 'users', userId, 'clients') : null), [firestore, userId]);
+  const loansCollection = useMemoFirebase(() => (firestore && userId ? collection(firestore, 'users', userId, 'loans') : null), [firestore, userId]);
 
   const { data: accountsData, loading: accountsLoading } = useCollection<Account>(accountsCollection);
   const { data: clientsData, loading: clientsLoading } = useCollection<Client>(clientsCollection);
   const { data: loansData, loading: loansLoading } = useCollection<Loan>(loansCollection);
   
-  const loading = accountsLoading || clientsLoading || loansLoading;
+  const loading = accountsLoading || clientsLoading || loansLoading || isUserLoading;
 
   const accounts = React.useMemo(() => {
     if (!accountsData) return [];
@@ -104,13 +106,13 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }, [loansData, timeRange]);
 
   const createAccount = async (values: NewAccountFormValues) => {
-    if (!firestore) return;
-    const newAccountRef = doc(collection(firestore, 'accounts'));
+    if (!firestore || !userId) return;
+    const newAccountRef = doc(collection(firestore, 'users', userId, 'accounts'));
     const newAccountData = { ...values, id: newAccountRef.id, transactions: [] };
     
     setDoc(newAccountRef, newAccountData).catch(err => {
        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `accounts/${newAccountRef.id}`,
+          path: newAccountRef.path,
           operation: 'create',
           requestResourceData: newAccountData,
         }));
@@ -118,12 +120,12 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateAccount = async (id: string, values: NewAccountFormValues) => {
-    if (!firestore) return;
-    const accountRef = doc(firestore, 'accounts', id);
+    if (!firestore || !userId) return;
+    const accountRef = doc(firestore, 'users', userId, 'accounts', id);
     // Balance cannot be edited directly, so we only update the name.
     updateDoc(accountRef, { name: values.name }).catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `accounts/${id}`,
+            path: accountRef.path,
             operation: 'update',
             requestResourceData: { name: values.name },
         }));
@@ -131,7 +133,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     };
 
     const deleteAccount = async (id: string) => {
-    if (!firestore || !loansData) return;
+    if (!firestore || !loansData || !userId) return;
     
     const accountToDelete = accounts.find(acc => acc.id === id);
     if (!accountToDelete) throw new Error("Conta não encontrada.");
@@ -145,23 +147,23 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Não é possível excluir uma conta associada a empréstimos existentes.");
     }
 
-    const accountRef = doc(firestore, 'accounts', id);
+    const accountRef = doc(firestore, 'users', userId, 'accounts', id);
     deleteDoc(accountRef).catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `accounts/${id}`,
+            path: accountRef.path,
             operation: 'delete',
         }));
     });
   };
   
   const createClient = async (values: NewClientFormValues) => {
-    if (!firestore) return;
-    const newClientRef = doc(collection(firestore, 'clients'));
+    if (!firestore || !userId) return;
+    const newClientRef = doc(collection(firestore, 'users', userId, 'clients'));
     const newClientData = { ...values, id: newClientRef.id };
 
     setDoc(newClientRef, newClientData).catch(err => {
        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `clients/${newClientRef.id}`,
+          path: newClientRef.path,
           operation: 'create',
           requestResourceData: newClientData,
         }));
@@ -169,11 +171,11 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateClient = async (id: string, values: NewClientFormValues) => {
-    if (!firestore) return;
-    const clientRef = doc(firestore, 'clients', id);
+    if (!firestore || !userId) return;
+    const clientRef = doc(firestore, 'users', userId, 'clients', id);
     updateDoc(clientRef, values as any).catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `clients/${id}`,
+            path: clientRef.path,
             operation: 'update',
             requestResourceData: values,
         }));
@@ -181,13 +183,13 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteClient = async (id: string) => {
-    if (!firestore) return;
-    const clientRef = doc(firestore, 'clients', id);
+    if (!firestore || !userId) return;
+    const clientRef = doc(firestore, 'users', userId, 'clients', id);
     // Note: This is a simple deletion. In a real-world app,
     // you'd want to check for associated loans before deleting.
     deleteDoc(clientRef).catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `clients/${id}`,
+            path: clientRef.path,
             operation: 'delete',
         }));
     });
@@ -195,17 +197,18 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
 
   const createLoan = async (values: NewLoanFormValues) => {
-    if (!firestore || !loansData) return;
+    if (!firestore || !loansData || !userId) return;
 
     try {
       await runTransaction(firestore, async (transaction) => {
         let clientId = values.clientId;
         let borrowerName = clients.find(c => c.id === clientId)?.name;
-
-        const loanRef = doc(collection(firestore, 'loans'));
+        
+        const loansColRef = collection(firestore, 'users', userId, 'loans');
+        const loanRef = doc(loansColRef);
 
         // Perform all reads first
-        const accountRef = doc(firestore, 'accounts', values.accountId);
+        const accountRef = doc(firestore, 'users', userId, 'accounts', values.accountId);
         const accountDoc = await transaction.get(accountRef);
         if (!accountDoc.exists()) throw new Error("Conta de origem não encontrada.");
 
@@ -214,7 +217,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         
         // Now perform all writes
         if (values.isNewClient && values.borrowerName) {
-            const newClientRef = doc(collection(firestore, 'clients'));
+            const newClientRef = doc(collection(firestore, 'users', userId, 'clients'));
             clientId = newClientRef.id;
             borrowerName = values.borrowerName;
             const newClientData: Omit<Client, 'avatar'> = { 
@@ -302,7 +305,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
         console.error("Erro ao criar empréstimo:", err);
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'loans ou accounts',
+          path: `users/${userId}/loans`,
           operation: 'write',
           requestResourceData: values,
         }));
@@ -311,8 +314,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateLoan = async (values: NewLoanFormValues, id: string) => {
-    if (!firestore) return;
-    const loanRef = doc(firestore, 'loans', id);
+    if (!firestore || !userId) return;
+    const loanRef = doc(firestore, 'users', userId, 'loans', id);
 
     try {
       // NOTE: This is a simplified update. A full update would need to handle
@@ -367,7 +370,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
         console.error("Erro ao atualizar empréstimo:", err);
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `loans/${id}`,
+          path: loanRef.path,
           operation: 'update',
           requestResourceData: values,
         }));
@@ -375,15 +378,15 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   };
   
   const deleteLoan = async (id: string) => {
-     if (!firestore) return;
+     if (!firestore || !userId) return;
     try {
       await runTransaction(firestore, async (transaction) => {
-        const loanRef = doc(firestore, 'loans', id);
+        const loanRef = doc(firestore, 'users', userId, 'loans', id);
         const loanDoc = await transaction.get(loanRef);
         if (!loanDoc.exists()) throw new Error("Empréstimo não encontrado.");
 
         const loanData = loanDoc.data() as Loan;
-        const accountRef = doc(firestore, 'accounts', loanData.accountId);
+        const accountRef = doc(firestore, 'users', userId, 'accounts', loanData.accountId);
         const accountDoc = await transaction.get(accountRef);
         if (!accountDoc.exists()) throw new Error("Conta associada não encontrada.");
 
@@ -403,7 +406,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("Erro ao deletar empréstimo:", err);
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: `loans/${id}`,
+        path: `users/${userId}/loans/${id}`,
         operation: 'delete',
       }));
     }
@@ -417,13 +420,13 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     paymentMethod: string,
     destinationAccountId: string
   ) => {
-    if (!firestore) return;
+    if (!firestore || !userId) return;
     
     try {
       await runTransaction(firestore, async (transaction) => {
         // 1. READ all documents first
-        const loanRef = doc(firestore, 'loans', loanId);
-        const accountRef = doc(firestore, 'accounts', destinationAccountId);
+        const loanRef = doc(firestore, 'users', userId, 'loans', loanId);
+        const accountRef = doc(firestore, 'users', userId, 'accounts', destinationAccountId);
         
         const loanDoc = await transaction.get(loanRef);
         if (!loanDoc.exists()) throw new Error("Empréstimo não encontrado.");
@@ -501,18 +504,18 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
         console.error("Erro ao registrar pagamento:", err);
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `loans/${loanId} ou accounts/${destinationAccountId}`,
+            path: `users/${userId}/loans/${loanId} ou users/${userId}/accounts/${destinationAccountId}`,
             operation: 'update',
         }));
     }
   };
 
   const createTransaction = async (values: NewTransactionFormValues) => {
-    if (!firestore) return;
+    if (!firestore || !userId) return;
 
     try {
         await runTransaction(firestore, async (transaction) => {
-            const accountRef = doc(firestore, 'accounts', values.accountId);
+            const accountRef = doc(firestore, 'users', userId, 'accounts', values.accountId);
             const accountDoc = await transaction.get(accountRef);
             if (!accountDoc.exists()) throw new Error("Conta não encontrada.");
 
@@ -535,7 +538,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
         console.error("Erro ao criar transação:", err);
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `accounts/${values.accountId}`,
+            path: `users/${userId}/accounts/${values.accountId}`,
             operation: 'update',
             requestResourceData: values,
         }));
@@ -544,21 +547,17 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   };
   
   const seedDatabase = async () => {
-    if (!firestore) return;
+    if (!firestore || !userId) return;
     const batch = writeBatch(firestore);
 
-    // Clear existing data
-    const collections = ['clients', 'accounts', 'loans'];
-    for (const coll of collections) {
-      const snapshot = await getDocs(collection(firestore, coll));
-      snapshot.docs.forEach(doc => batch.delete(doc.ref));
-    }
+    // This will seed data under the current user's path
+    const userRoot = `users/${userId}`;
 
     // 1. Seed Accounts (2)
     const accountIds = ['nubank', 'itau'];
     const accountNames = ['Nubank', 'Itaú'];
     const seededAccounts = accountIds.map((id, index) => {
-        const accountRef = doc(firestore, 'accounts', id);
+        const accountRef = doc(firestore, userRoot, 'accounts', id);
         const data = {
             id,
             name: accountNames[index],
@@ -574,7 +573,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     const lastNames = ['Silva', 'Santos', 'Oliveira', 'Souza'];
     
     const seededClients = firstNames.map((_, index) => {
-        const clientRef = doc(collection(firestore, 'clients'));
+        const clientRef = doc(collection(firestore, userRoot, 'clients'));
         const client = {
             id: clientRef.id,
             name: `${firstNames[index]} ${lastNames[index]}`,
@@ -589,7 +588,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
     // 3. Seed Loans (10)
     for (let i = 0; i < 10; i++) {
-        const loanRef = doc(collection(firestore, 'loans'));
+        const loanRef = doc(collection(firestore, userRoot, 'loans'));
         const randomClient = seededClients[Math.floor(Math.random() * seededClients.length)];
         const randomAccount = seededAccounts[Math.floor(Math.random() * seededAccounts.length)];
         
