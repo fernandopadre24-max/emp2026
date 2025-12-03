@@ -40,7 +40,7 @@ type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' 
 type Installment = Loan['installments'][0];
 
 export default function EmprestimosPage() {
-  const { filteredLoans: timeFilteredLoans, setTimeRange, timeRange, accounts, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
+  const { filteredLoans: timeFilteredLoans, setTimeRange, timeRange, accounts, clients, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
   const [activeFilter, setActiveFilter] = React.useState<LoanStatusFilter>('Todos');
   const [search, setSearch] = React.useState('');
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
@@ -126,9 +126,11 @@ export default function EmprestimosPage() {
   const filteredLoans = React.useMemo(() => {
     const searchLower = search.toLowerCase();
 
-    const loansAfterSearch = timeFilteredLoans.filter(loan =>
-        loan.borrowerName.toLowerCase().includes(searchLower)
-    );
+    const loansAfterSearch = timeFilteredLoans.filter(loan => {
+        const client = clients.find(c => c.id === loan.clientId);
+        const clientCpf = client?.cpf.replace(/\D/g, '') || '';
+        return loan.borrowerName.toLowerCase().includes(searchLower) || clientCpf.includes(searchLower.replace(/\D/g, ''));
+    });
 
     if (activeFilter === 'Todos') return loansAfterSearch;
     if (activeFilter === 'Parcialmente Pago') return loansAfterSearch.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
@@ -139,7 +141,7 @@ export default function EmprestimosPage() {
       const displayStatus = isOverdue ? 'Atrasado' : loan.status;
       return displayStatus === activeFilter;
     });
-  }, [activeFilter, timeFilteredLoans, search]);
+  }, [activeFilter, timeFilteredLoans, search, clients]);
 
   const summary = React.useMemo(() => ({
     totalEmprestado: timeFilteredLoans.reduce((acc, loan) => acc + loan.amount, 0),
@@ -231,7 +233,7 @@ export default function EmprestimosPage() {
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-                placeholder="Buscar por nome do mutuário..." 
+                placeholder="Buscar por nome ou CPF do mutuário..." 
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
