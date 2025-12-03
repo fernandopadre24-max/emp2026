@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Banknote, Calendar, Percent, FileSpreadsheet, ChevronDown, TrendingUp, DollarSign, Landmark } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Banknote, Calendar, Percent, FileSpreadsheet, ChevronDown, TrendingUp, DollarSign, Landmark, Search } from 'lucide-react';
 import type { Loan, Payment } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { TimeRange } from '@/context/financial-context';
+import { Input } from '@/components/ui/input';
 
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
@@ -41,6 +42,7 @@ type Installment = Loan['installments'][0];
 export default function EmprestimosPage() {
   const { filteredLoans: timeFilteredLoans, setTimeRange, timeRange, accounts, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
   const [activeFilter, setActiveFilter] = React.useState<LoanStatusFilter>('Todos');
+  const [search, setSearch] = React.useState('');
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
   const [editingLoan, setEditingLoan] = React.useState<Loan | null>(null);
   const [deletingLoanId, setDeletingLoanId] = React.useState<string | null>(null);
@@ -122,15 +124,22 @@ export default function EmprestimosPage() {
   };
 
   const filteredLoans = React.useMemo(() => {
-    if (activeFilter === 'Todos') return timeFilteredLoans;
-    if (activeFilter === 'Parcialmente Pago') return timeFilteredLoans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
-    if (activeFilter === 'Quitado') return timeFilteredLoans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
-    return timeFilteredLoans.filter(loan => {
+    const searchLower = search.toLowerCase();
+
+    const loansAfterSearch = timeFilteredLoans.filter(loan =>
+        loan.borrowerName.toLowerCase().includes(searchLower)
+    );
+
+    if (activeFilter === 'Todos') return loansAfterSearch;
+    if (activeFilter === 'Parcialmente Pago') return loansAfterSearch.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
+    if (activeFilter === 'Quitado') return loansAfterSearch.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
+    
+    return loansAfterSearch.filter(loan => {
       const isOverdue = (loan.status === 'Ativo' || loan.status === 'Pendente') && loan.installments.some(i => (i.status === 'Pendente' || i.status === 'Parcialmente Pago') && new Date(i.dueDate + 'T00:00:00') < new Date());
       const displayStatus = isOverdue ? 'Atrasado' : loan.status;
       return displayStatus === activeFilter;
     });
-  }, [activeFilter, timeFilteredLoans]);
+  }, [activeFilter, timeFilteredLoans, search]);
 
   const summary = React.useMemo(() => ({
     totalEmprestado: timeFilteredLoans.reduce((acc, loan) => acc + loan.amount, 0),
@@ -218,7 +227,16 @@ export default function EmprestimosPage() {
         </Card>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 space-y-4">
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Buscar por nome do mutuário..." 
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+            />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
               {(['Todos', 'Ativo', 'Atrasado', 'Pendente', 'Quitado'] as LoanStatusFilter[]).map(filter => (
