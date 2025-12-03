@@ -10,15 +10,20 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { writeBatch, collection, doc, serverTimestamp, Timestamp, setDoc, addDoc, deleteDoc, updateDoc, runTransaction, where, query, getDocs, arrayUnion } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
-import { add, format } from 'date-fns';
+import { add, format, sub, isWithinInterval } from 'date-fns';
 import type { NewAccountFormValues } from '@/app/(app)/contas/components/new-account-dialog';
 import type { NewClientFormValues } from '@/app/(app)/clientes/components/new-client-dialog';
+
+export type TimeRange = 'all' | '30d' | '90d' | '1y';
 
 interface FinancialDataContextType {
   accounts: Account[];
   clients: Client[];
   loans: Loan[];
+  filteredLoans: Loan[];
   loading: boolean;
+  timeRange: TimeRange;
+  setTimeRange: (range: TimeRange) => void;
   createLoan: (values: NewLoanFormValues) => Promise<void>;
   updateLoan: (values: NewLoanFormValues, id: string) => Promise<void>;
   deleteLoan: (id: string) => Promise<void>;
@@ -45,6 +50,7 @@ const FinancialDataContext = React.createContext<FinancialDataContextType | unde
 export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { user } = useUser();
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('all');
 
   const { data: accountsData, loading: accountsLoading } = useCollection<Account>('accounts');
   const { data: clientsData, loading: clientsLoading } = useCollection<Client>('clients');
@@ -65,6 +71,33 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     if (!clientsData) return [];
     return clientsData.map(c => ({...c, avatar: UserIcon}));
   }, [clientsData]);
+
+  const filteredLoans = React.useMemo(() => {
+    if (!loansData) return [];
+    if (timeRange === 'all') return loansData;
+
+    const now = new Date();
+    let startDate: Date;
+
+    switch (timeRange) {
+        case '30d':
+            startDate = sub(now, { days: 30 });
+            break;
+        case '90d':
+            startDate = sub(now, { days: 90 });
+            break;
+        case '1y':
+            startDate = sub(now, { years: 1 });
+            break;
+        default:
+            startDate = new Date(0); // Should not happen
+    }
+    
+    return loansData.filter(loan => {
+        const loanDate = new Date(loan.startDate + 'T00:00:00');
+        return isWithinInterval(loanDate, { start: startDate, end: now });
+    });
+  }, [loansData, timeRange]);
 
   const createAccount = async (values: NewAccountFormValues) => {
     if (!firestore) return;
@@ -611,7 +644,10 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     accounts,
     clients,
     loans: loansData || [],
+    filteredLoans,
     loading,
+    timeRange,
+    setTimeRange,
     createLoan,
     updateLoan,
     deleteLoan,

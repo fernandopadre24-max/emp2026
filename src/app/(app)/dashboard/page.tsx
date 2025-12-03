@@ -41,19 +41,21 @@ import {
   LineChart,
   ResponsiveContainer,
 } from 'recharts';
+import type { TimeRange } from '@/context/financial-context';
+
 
 export default function DashboardPage() {
-  const { loans } = useFinancialData();
-  const totalEmprestado = loans.reduce((acc, loan) => acc + loan.amount, 0);
-  const totalRecebido = loans
+  const { filteredLoans, setTimeRange, timeRange } = useFinancialData();
+  const totalEmprestado = filteredLoans.reduce((acc, loan) => acc + loan.amount, 0);
+  const totalRecebido = filteredLoans
     .flatMap((l) => l.payments)
     .reduce((acc, p) => acc + p.amount, 0);
-  const emprestimosAtivos = loans.filter((l) => l.status === 'Ativo').length;
-  const emprestimosAtrasados = loans.filter(
+  const emprestimosAtivos = filteredLoans.filter((l) => l.status === 'Ativo').length;
+  const emprestimosAtrasados = filteredLoans.filter(
     (l) => l.status === 'Atrasado'
   ).length;
 
-  const recentLoans = [...loans]
+  const recentLoans = [...filteredLoans]
     .sort(
       (a, b) =>
         new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
@@ -80,27 +82,27 @@ export default function DashboardPage() {
     () => [
       {
         name: 'Ativo',
-        value: loans.filter((l) => l.status === 'Ativo').length,
+        value: filteredLoans.filter((l) => l.status === 'Ativo').length,
         fill: 'var(--color-chart-2)',
       },
       {
         name: 'Atrasado',
-        value: loans.filter((l) => l.status === 'Atrasado').length,
+        value: filteredLoans.filter((l) => l.status === 'Atrasado').length,
         fill: 'var(--color-chart-5)',
       },
       {
         name: 'Quitado',
-        value: loans.filter(
+        value: filteredLoans.filter(
           (l) => l.status === 'Quitado' || l.status === 'Pago'
         ).length,
         fill: 'var(--color-chart-1)',
       },
     ],
-    [loans]
+    [filteredLoans]
   );
 
   const monthlyPaymentsData = React.useMemo(() => {
-    const monthlyPayments = loans
+    const monthlyPayments = filteredLoans
       .flatMap((l) => l.payments)
       .reduce((acc, payment) => {
         const month = new Date(
@@ -139,10 +141,10 @@ export default function DashboardPage() {
     );
 
     return sortedDates.map((date) => dateMap.get(date)!);
-  }, [loans]);
+  }, [filteredLoans]);
 
   const newLoansData = React.useMemo(() => {
-    const monthlyNewLoans = loans.reduce((acc, loan) => {
+    const monthlyNewLoans = filteredLoans.reduce((acc, loan) => {
       const month = new Date(loan.startDate + 'T00:00:00').toLocaleString(
         'pt-BR',
         { month: 'short', year: '2-digit' }
@@ -180,13 +182,34 @@ export default function DashboardPage() {
     );
 
     return sortedDates.map((date) => dateMap.get(date)!);
-  }, [loans]);
+  }, [filteredLoans]);
+  
+  const timeRangeOptions: {label: string, value: TimeRange}[] = [
+      { label: 'Todo o Período', value: 'all' },
+      { label: 'Últimos 30 dias', value: '30d' },
+      { label: 'Últimos 90 dias', value: '90d' },
+      { label: 'Último Ano', value: '1y' },
+  ];
 
   return (
     <>
       <PageHeader
         title="Visão Geral"
         description="Bem-vindo ao seu painel de gestão de empréstimos."
+        action={
+            <div className="flex items-center gap-2">
+                {timeRangeOptions.map(option => (
+                    <Button
+                        key={option.value}
+                        variant={timeRange === option.value ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setTimeRange(option.value)}
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
+        }
       />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
