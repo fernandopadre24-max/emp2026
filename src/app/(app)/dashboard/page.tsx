@@ -83,19 +83,19 @@ export default function DashboardPage() {
       {
         name: 'Ativo',
         value: filteredLoans.filter((l) => l.status === 'Ativo').length,
-        fill: 'var(--color-chart-2)',
+        fill: 'hsl(var(--chart-2))',
       },
       {
         name: 'Atrasado',
         value: filteredLoans.filter((l) => l.status === 'Atrasado').length,
-        fill: 'var(--color-chart-5)',
+        fill: 'hsl(var(--chart-5))',
       },
       {
         name: 'Quitado',
         value: filteredLoans.filter(
           (l) => l.status === 'Quitado' || l.status === 'Pago'
         ).length,
-        fill: 'var(--color-chart-1)',
+        fill: 'hsl(var(--chart-3))',
       },
     ],
     [filteredLoans]
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                 />
                 <Bar
                   dataKey="total"
-                  fill="hsl(var(--primary))"
+                  fill="hsl(var(--chart-2))"
                   radius={4}
                   name="Total Recebido"
                 />
@@ -388,7 +388,7 @@ export default function DashboardPage() {
                 <Line
                   type="monotone"
                   dataKey="count"
-                  stroke="hsl(var(--primary))"
+                  stroke="hsl(var(--chart-4))"
                   strokeWidth={2}
                   dot={false}
                   name="Novos Empréstimos"
