@@ -5,7 +5,7 @@ import type { Account, Client, Loan, Payment, Transaction } from '@/lib/types';
 import type { NewLoanFormValues } from '@/app/(app)/emprestimos/components/new-loan-dialog';
 import type { NewTransactionFormValues } from '@/app/(app)/contas/components/new-transaction-dialog';
 import { User as UserIcon, Library, Wallet } from 'lucide-react';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { writeBatch, collection, doc, serverTimestamp, Timestamp, setDoc, addDoc, deleteDoc, updateDoc, runTransaction, where, query, getDocs, arrayUnion } from 'firebase/firestore';
@@ -52,9 +52,13 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const [timeRange, setTimeRange] = React.useState<TimeRange>('all');
 
-  const { data: accountsData, loading: accountsLoading } = useCollection<Account>('accounts');
-  const { data: clientsData, loading: clientsLoading } = useCollection<Client>('clients');
-  const { data: loansData, loading: loansLoading } = useCollection<Loan>('loans');
+  const accountsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'accounts') : null, [firestore]);
+  const clientsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'clients') : null, [firestore]);
+  const loansCollection = useMemoFirebase(() => firestore ? collection(firestore, 'loans') : null, [firestore]);
+
+  const { data: accountsData, loading: accountsLoading } = useCollection<Account>(accountsCollection);
+  const { data: clientsData, loading: clientsLoading } = useCollection<Client>(clientsCollection);
+  const { data: loansData, loading: loansLoading } = useCollection<Loan>(loansCollection);
   
   const loading = accountsLoading || clientsLoading || loansLoading;
 
@@ -109,7 +113,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           path: `accounts/${newAccountRef.id}`,
           operation: 'create',
           requestResourceData: newAccountData,
-        }, err));
+        }));
     });
   }
 
@@ -122,7 +126,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             path: `accounts/${id}`,
             operation: 'update',
             requestResourceData: { name: values.name },
-        }, err));
+        }));
     });
     };
 
@@ -146,7 +150,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `accounts/${id}`,
             operation: 'delete',
-        }, err));
+        }));
     });
   };
   
@@ -160,7 +164,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           path: `clients/${newClientRef.id}`,
           operation: 'create',
           requestResourceData: newClientData,
-        }, err));
+        }));
     });
   }
 
@@ -172,7 +176,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             path: `clients/${id}`,
             operation: 'update',
             requestResourceData: values,
-        }, err));
+        }));
     });
   };
 
@@ -185,7 +189,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `clients/${id}`,
             operation: 'delete',
-        }, err));
+        }));
     });
   };
 
@@ -301,7 +305,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           path: 'loans ou accounts',
           operation: 'write',
           requestResourceData: values,
-        }, err));
+        }));
         throw err;
     }
   };
@@ -366,7 +370,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           path: `loans/${id}`,
           operation: 'update',
           requestResourceData: values,
-        }, err));
+        }));
     }
   };
   
@@ -401,7 +405,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `loans/${id}`,
         operation: 'delete',
-      }, err));
+      }));
     }
   };
   
@@ -499,7 +503,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `loans/${loanId} ou accounts/${destinationAccountId}`,
             operation: 'update',
-        }, err));
+        }));
     }
   };
 
@@ -534,7 +538,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             path: `accounts/${values.accountId}`,
             operation: 'update',
             requestResourceData: values,
-        }, err));
+        }));
         throw err;
     }
   };
@@ -636,7 +640,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: 'batch write',
           operation: 'write',
-        }, err));
+        }));
     }
   };
 
