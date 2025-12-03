@@ -58,9 +58,9 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const clientsCollection = useMemoFirebase(() => (firestore && userId ? collection(firestore, 'users', userId, 'clients') : null), [firestore, userId]);
   const loansCollection = useMemoFirebase(() => (firestore && userId ? collection(firestore, 'users', userId, 'loans') : null), [firestore, userId]);
 
-  const { data: accountsData, loading: accountsLoading } = useCollection<Account>(accountsCollection);
-  const { data: clientsData, loading: clientsLoading } = useCollection<Client>(clientsCollection);
-  const { data: loansData, loading: loansLoading } = useCollection<Loan>(loansCollection);
+  const { data: accountsData, isLoading: accountsLoading } = useCollection<Account>(accountsCollection);
+  const { data: clientsData, isLoading: clientsLoading } = useCollection<Client>(clientsCollection);
+  const { data: loansData, isLoading: loansLoading } = useCollection<Loan>(loansCollection);
   
   const loading = accountsLoading || clientsLoading || loansLoading || isUserLoading;
 
