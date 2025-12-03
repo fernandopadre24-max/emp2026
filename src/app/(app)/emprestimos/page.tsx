@@ -32,13 +32,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import type { TimeRange } from '@/context/financial-context';
 
 
 type LoanStatusFilter = 'Todos' | 'Atrasado' | 'Parcialmente Pago' | 'Pendente' | 'Quitado' | 'Ativo';
 type Installment = Loan['installments'][0];
 
 export default function EmprestimosPage() {
-  const { loans, accounts, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
+  const { filteredLoans: timeFilteredLoans, setTimeRange, timeRange, accounts, deleteLoan, registerPayment, createLoan, updateLoan } = useFinancialData();
   const [activeFilter, setActiveFilter] = React.useState<LoanStatusFilter>('Todos');
   const [isNewLoanOpen, setNewLoanOpen] = React.useState(false);
   const [editingLoan, setEditingLoan] = React.useState<Loan | null>(null);
@@ -70,7 +71,7 @@ export default function EmprestimosPage() {
 
   const handleDeleteLoan = async () => {
     if (!deletingLoanId) return;
-    const loanToDelete = loans.find(l => l.id === deletingLoanId);
+    const loanToDelete = timeFilteredLoans.find(l => l.id === deletingLoanId);
     await deleteLoan(deletingLoanId);
     toast({
       title: "Empréstimo Excluído",
@@ -121,24 +122,24 @@ export default function EmprestimosPage() {
   };
 
   const filteredLoans = React.useMemo(() => {
-    if (activeFilter === 'Todos') return loans;
-    if (activeFilter === 'Parcialmente Pago') return loans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
-    if (activeFilter === 'Quitado') return loans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
-    return loans.filter(loan => {
+    if (activeFilter === 'Todos') return timeFilteredLoans;
+    if (activeFilter === 'Parcialmente Pago') return timeFilteredLoans.filter(loan => loan.installments.some(i => i.status === 'Parcialmente Pago'));
+    if (activeFilter === 'Quitado') return timeFilteredLoans.filter(loan => loan.status === 'Quitado' || loan.status === 'Pago');
+    return timeFilteredLoans.filter(loan => {
       const isOverdue = (loan.status === 'Ativo' || loan.status === 'Pendente') && loan.installments.some(i => (i.status === 'Pendente' || i.status === 'Parcialmente Pago') && new Date(i.dueDate + 'T00:00:00') < new Date());
       const displayStatus = isOverdue ? 'Atrasado' : loan.status;
       return displayStatus === activeFilter;
     });
-  }, [activeFilter, loans]);
+  }, [activeFilter, timeFilteredLoans]);
 
   const summary = React.useMemo(() => ({
-    totalEmprestado: loans.reduce((acc, loan) => acc + loan.amount, 0),
-    totalRecebido: loans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0),
-    emprestimosAtivos: loans.filter(l => l.status === 'Ativo').length,
-    emprestimosAtrasados: loans.filter(l => l.status === 'Atrasado' || l.installments.some(i => i.status === 'Pendente' && new Date(i.dueDate + 'T00:00:00') < new Date())).length,
-  }), [loans]);
+    totalEmprestado: timeFilteredLoans.reduce((acc, loan) => acc + loan.amount, 0),
+    totalRecebido: timeFilteredLoans.flatMap(l => l.payments).reduce((acc, p) => acc + p.amount, 0),
+    emprestimosAtivos: timeFilteredLoans.filter(l => l.status === 'Ativo').length,
+    emprestimosAtrasados: timeFilteredLoans.filter(l => l.status === 'Atrasado' || l.installments.some(i => i.status === 'Pendente' && new Date(i.dueDate + 'T00:00:00') < new Date())).length,
+  }), [timeFilteredLoans]);
   
-  const loanToDelete = loans.find(l => l.id === deletingLoanId);
+  const loanToDelete = timeFilteredLoans.find(l => l.id === deletingLoanId);
 
   const toggleCollapsible = (loanId: string) => {
     setOpenCollapsibles(prev => {
@@ -151,6 +152,13 @@ export default function EmprestimosPage() {
         return newSet;
     });
   };
+  
+    const timeRangeOptions: {label: string, value: TimeRange}[] = [
+      { label: 'Todo o Período', value: 'all' },
+      { label: 'Últimos 30 dias', value: '30d' },
+      { label: 'Últimos 90 dias', value: '90d' },
+      { label: 'Último Ano', value: '1y' },
+  ];
 
   return (
     <div className="text-white">
@@ -175,7 +183,7 @@ export default function EmprestimosPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(summary.totalEmprestado)}</div>
-            <p className="text-xs text-muted-foreground">Valor total de todos os empréstimos</p>
+            <p className="text-xs text-muted-foreground">Valor filtrado por período</p>
           </CardContent>
         </Card>
         <Card>
@@ -185,7 +193,7 @@ export default function EmprestimosPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-green-500">{formatCurrency(summary.totalRecebido)}</div>
-                <p className="text-xs text-muted-foreground">Soma de todos os pagamentos</p>
+                <p className="text-xs text-muted-foreground">Pagamentos no período selecionado</p>
             </CardContent>
         </Card>
         <Card>
@@ -195,7 +203,7 @@ export default function EmprestimosPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{summary.emprestimosAtivos}</div>
-            <p className="text-xs text-muted-foreground">Empréstimos aguardando quitação</p>
+            <p className="text-xs text-muted-foreground">Empréstimos ativos no período</p>
           </CardContent>
         </Card>
         <Card>
@@ -205,24 +213,39 @@ export default function EmprestimosPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-500">+{summary.emprestimosAtrasados}</div>
-            <p className="text-xs text-muted-foreground">Empréstimos com pagamentos atrasados</p>
+            <p className="text-xs text-muted-foreground">Atrasados no período</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="mb-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {(['Todos', 'Ativo', 'Atrasado', 'Pendente', 'Quitado'] as LoanStatusFilter[]).map(filter => (
-            <Button
-              key={filter}
-              variant={activeFilter === filter ? 'default' : 'outline'}
-              size="sm"
-              className={cn('shrink-0', activeFilter === filter ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground border-border')}
-              onClick={() => setActiveFilter(filter)}
-            >
-              {filter}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {(['Todos', 'Ativo', 'Atrasado', 'Pendente', 'Quitado'] as LoanStatusFilter[]).map(filter => (
+                <Button
+                  key={filter}
+                  variant={activeFilter === filter ? 'default' : 'outline'}
+                  size="sm"
+                  className={cn('shrink-0', activeFilter === filter ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground border-border')}
+                  onClick={() => setActiveFilter(filter)}
+                >
+                  {filter}
+                </Button>
+              ))}
+            </div>
+             <div className="my-2 h-6 w-px bg-border" />
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                {timeRangeOptions.map(option => (
+                    <Button
+                        key={option.value}
+                        variant={timeRange === option.value ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setTimeRange(option.value)}
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
         </div>
       </div>
 
