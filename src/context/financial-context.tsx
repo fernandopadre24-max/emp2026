@@ -78,9 +78,20 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     return clientsData.map(c => ({...c, avatar: UserIcon}));
   }, [clientsData]);
 
+  const loans = React.useMemo(() => {
+    if (!loansData || !clientsData) return [];
+    return loansData.map(loan => {
+      const client = clientsData.find(c => c.id === loan.clientId);
+      return {
+        ...loan,
+        borrowerName: client?.name || loan.borrowerName || 'Cliente Desconhecido',
+      };
+    });
+  }, [loansData, clientsData]);
+
   const filteredLoans = React.useMemo(() => {
-    if (!loansData) return [];
-    if (timeRange === 'all') return loansData;
+    if (!loans) return [];
+    if (timeRange === 'all') return loans;
 
     const now = new Date();
     let startDate: Date;
@@ -99,11 +110,11 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
             startDate = new Date(0); // Should not happen
     }
     
-    return loansData.filter(loan => {
+    return loans.filter(loan => {
         const loanDate = new Date(loan.startDate + 'T00:00:00');
         return isWithinInterval(loanDate, { start: startDate, end: now });
     });
-  }, [loansData, timeRange]);
+  }, [loans, timeRange]);
 
   const createAccount = async (values: NewAccountFormValues) => {
     if (!firestore || !userId) return;
@@ -646,7 +657,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const value = {
     accounts,
     clients,
-    loans: loansData || [],
+    loans,
     filteredLoans,
     loading,
     timeRange,
