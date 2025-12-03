@@ -1,17 +1,223 @@
-
+/**
+ * This ruleset enforces a security model based on user ownership with an administrative override.
+ * It is designed for a lending management application where user data is highly sensitive and must be segregated.
+ *
+ * Core Philosophy:
+ * - User data is private by default. Access is granted only to the data owner or an administrator.
+ * - A user is considered an 'owner' if their UID matches the {userId} wildcard in the document path.
+ * - A user is considered an 'administrator' if their UID exists as a document ID in the /roles_admin collection.
+ *
+ * Data Structure:
+ * - All user-specific data (borrowers, loans, payments, alerts) is nested under the /users/{userId} path.
+ * - This hierarchical structure enables simple, performant, and secure path-based authorization rules.
+ * - A top-level /roles_admin collection serves as a lookup table to identify administrators. This collection is not client-writable.
+ *
+ * Key Security Decisions:
+ * - Admin Override: Administrators have read and write access to all user data for management and support purposes.
+ * - Path-Based Security: Authorization is determined by the document's path, specifically the {userId} segment. This avoids costly and complex `get()` calls in rules.
+ * - No Public Listing: There are no publicly listable collections. Users can only list their own data, and admins can list any user's data.
+ * - Immutable IDs: Critical relational identifiers (e.g., borrowerId, loanId) are enforced to be immutable after creation to maintain data integrity.
+ * - Prototyping Flexibility: While authorization is strict, data schemas are not. The rules do not validate the shape or type of most fields, allowing for rapid front-end development.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    match /{document=**} {
-      allow read: if true;
-      allow write: if isSignedIn();
+
+    /**
+     * Returns true if the authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Returns true if the user has an admin role.
+     * Checks for the existence of a document in the roles_admin collection.
+     * This works even if direct reads on /roles_admin are disabled.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+
+    /**
+     * Returns true if the user is the owner of the data path OR is an admin.
+     * This is the primary authorization function for all user-owned data.
+     */
+    function isOwnerOrAdmin(userId) {
+      return isOwner(userId) || isAdmin();
+    }
+
+    /**
+     * Returns true if the document being operated on already exists.
+     * Used to protect against updates or deletes of non-existent documents.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * Validates that the Borrower document being created has an `id` that matches the document ID.
+     * This enforces relational integrity between the path and the data.
+     */
+    function hasValidBorrowerDataForCreate(borrowerId) {
+      return request.resource.data.id == borrowerId;
+    }
+
+    /**
+     * Enforces immutability of the Borrower's `id` field during an update.
+     */
+    function isBorrowerImmutableOnUpdate() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that the Loan document being created has an `id` that matches the document ID.
+     */
+    function hasValidLoanDataForCreate(loanId) {
+      return request.resource.data.id == loanId;
+    }
+
+    /**
+     * Enforces immutability of the Loan's `id` and `borrowerId` fields during an update.
+     */
+    function isLoanImmutableOnUpdate() {
+      return request.resource.data.id == resource.data.id
+          && request.resource.data.borrowerId == resource.data.borrowerId;
+    }
+
+    /**
+     * Validates that the Payment document being created has an `id` matching its document ID
+     * and a `loanId` matching its parent collection ID.
+     */
+    function hasValidPaymentDataForCreate(loanId, paymentId) {
+      return request.resource.data.id == paymentId
+          && request.resource.data.loanId == loanId;
+    }
+
+    /**
+     * Enforces immutability of the Payment's `id` and `loanId` fields during an update.
+     */
+    function isPaymentImmutableOnUpdate() {
+      return request.resource.data.id == resource.data.id
+          && request.resource.data.loanId == resource.data.loanId;
+    }
+
+    /**
+     * Validates that the Alert document being created has an `id` matching its document ID
+     * and a `loanId` matching its parent collection ID.
+     */
+    function hasValidAlertDataForCreate(loanId, alertId) {
+      return request.resource.data.id == alertId
+          && request.resource.data.loanId == loanId;
+    }
+
+    /**
+     * Enforces immutability of the Alert's `id` and `loanId` fields during an update.
+     */
+    function isAlertImmutableOnUpdate() {
+      return request.resource.data.id == resource.data.id
+          && request.resource.data.loanId == resource.data.loanId;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // User Data Collections
+    // ------------------------------------------------------------------------
+
+    match /users/{userId} {
+      // Direct access to the user document is not defined or allowed.
+      // Rules are defined for subcollections below.
+      allow read, write: if false;
+
+      /**
+       * @description Secures borrower documents. Allows access only to the owning user or an admin.
+       * @path /users/{userId}/borrowers/{borrowerId}
+       * @allow User 'user123' reading their own borrower: `get /users/user123/borrowers/borrower789`
+       * @deny User 'user456' trying to read another user's borrower: `get /users/user123/borrowers/borrower789`
+       * @principle Restricts access to a user's own data tree, with an admin override for support.
+       */
+      match /borrowers/{borrowerId} {
+        allow get, list: if isOwnerOrAdmin(userId);
+        allow create: if isOwnerOrAdmin(userId) && hasValidBorrowerDataForCreate(borrowerId);
+        allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isBorrowerImmutableOnUpdate();
+        allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+      }
+
+      /**
+       * @description Secures loan documents and their subcollections (payments, alerts).
+       * @path /users/{userId}/loans/{loanId}
+       * @allow Admin 'adminABC' deleting a user's loan: `delete /users/user123/loans/loan789`
+       * @deny Anonymous user creating a loan: `create /users/user123/loans/loan789`
+       * @principle Enforces path-based ownership for a document and its nested subcollections.
+       */
+      match /loans/{loanId} {
+        allow get, list: if isOwnerOrAdmin(userId);
+        allow create: if isOwnerOrAdmin(userId) && hasValidLoanDataForCreate(loanId);
+        allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isLoanImmutableOnUpdate();
+        allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+
+        /**
+         * @description Secures payment records for a specific loan.
+         * @path /users/{userId}/loans/{loanId}/payments/{paymentId}
+         * @allow User 'user123' creating a payment for their own loan: `create /users/user123/loans/loan789/payments/pay001`
+         * @deny User 'user123' creating a payment with a mismatched loanId in the data.
+         * @principle Validates relational integrity between a subcollection document and its parent.
+         */
+        match /payments/{paymentId} {
+          allow get, list: if isOwnerOrAdmin(userId);
+          allow create: if isOwnerOrAdmin(userId) && hasValidPaymentDataForCreate(loanId, paymentId);
+          allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isPaymentImmutableOnUpdate();
+          allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+        }
+
+        /**
+         * @description Secures alert records for a specific loan.
+         * @path /users/{userId}/loans/{loanId}/alerts/{alertId}
+         * @allow User 'user123' listing alerts for their own loan: `list /users/user123/loans/loan789/alerts`
+         * @deny User 'user456' reading an alert from another user's loan: `get /users/user123/loans/loan789/alerts/alert001`
+         * @principle Inherits ownership permissions from the grandparent path.
+         */
+        match /alerts/{alertId} {
+          allow get, list: if isOwnerOrAdmin(userId);
+          allow create: if isOwnerOrAdmin(userId) && hasValidAlertDataForCreate(loanId, alertId);
+          allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isAlertImmutableOnUpdate();
+          allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+        }
+      }
+    }
+
+    // ------------------------------------------------------------------------
+    // Administrative Collections
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Secures the admin roles collection. This collection is used as a lookup
+     *              table by the `isAdmin()` function. It is not intended to be read or
+     *              written by any client to prevent exposing the list of admins or allowing
+     *              a user to grant themselves admin privileges.
+     * @path /roles_admin/{adminId}
+     * @allow No client operations are permitted. Roles must be managed server-side or via the Firebase Console.
+     * @deny Any user (including an admin) trying to read or write: `get /roles_admin/admin123`
+     * @principle Deny by default. Critical role-management data should not be client-modifiable.
+     */
+    match /roles_admin/{adminId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }

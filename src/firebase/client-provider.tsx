@@ -1,35 +1,26 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
-import { FirebaseProvider } from './provider';
-import { initializeFirebase } from './index';
-import { signInAnonymously } from 'firebase/auth';
+import React, { useMemo, type ReactNode } from 'react';
+import { FirebaseProvider } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
 
-export function FirebaseClientProvider({ children }: { children: ReactNode }) {
-  const [firebase, setFirebase] = useState<ReturnType<typeof initializeFirebase> | null>(null);
+interface FirebaseClientProviderProps {
+  children: ReactNode;
+}
 
-  useEffect(() => {
-    const fb = initializeFirebase();
-    setFirebase(fb);
-    
-    const signIn = async () => {
-      try {
-        await signInAnonymously(fb.auth);
-      } catch (error) {
-        console.error("Anonymous sign-in failed", error);
-      }
-    };
+export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  const firebaseServices = useMemo(() => {
+    // Initialize Firebase on the client side, once per component mount.
+    return initializeFirebase();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
-    if(fb.auth.currentUser === null) {
-        signIn();
-    }
-
-  }, []);
-
-  if (!firebase) {
-    // You can return a loading spinner here if needed
-    return <div>Loading Firebase...</div>;
-  }
-
-  return <FirebaseProvider value={firebase}>{children}</FirebaseProvider>;
+  return (
+    <FirebaseProvider
+      firebaseApp={firebaseServices.firebaseApp}
+      auth={firebaseServices.auth}
+      firestore={firebaseServices.firestore}
+    >
+      {children}
+    </FirebaseProvider>
+  );
 }
