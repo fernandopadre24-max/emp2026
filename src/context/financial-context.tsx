@@ -52,9 +52,9 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const [timeRange, setTimeRange] = React.useState<TimeRange>('all');
 
-  const accountsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'accounts') : null, [firestore]);
-  const clientsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'clients') : null, [firestore]);
-  const loansCollection = useMemoFirebase(() => firestore ? collection(firestore, 'loans') : null, [firestore]);
+  const accountsCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'accounts') : null), [firestore]);
+  const clientsCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'clients') : null), [firestore]);
+  const loansCollection = useMemoFirebase(() => (firestore ? collection(firestore, 'loans') : null), [firestore]);
 
   const { data: accountsData, loading: accountsLoading } = useCollection<Account>(accountsCollection);
   const { data: clientsData, loading: clientsLoading } = useCollection<Client>(clientsCollection);
