@@ -300,10 +300,10 @@ export default function EmprestimosPage() {
             <Collapsible key={loan.id} asChild onOpenChange={() => toggleCollapsible(loan.id)}>
                  <Card>
                     <CollapsibleTrigger asChild>
-                        <CardHeader className="cursor-pointer hover:bg-muted/50 rounded-t-lg">
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 rounded-t-lg p-4">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <CardTitle className="text-xl">{loan.borrowerName}</CardTitle>
+                                    <CardTitle className="text-lg">{loan.borrowerName}</CardTitle>
                                     <CardDescription className="text-xs">{loan.code}</CardDescription>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -313,8 +313,8 @@ export default function EmprestimosPage() {
                             </div>
                         </CardHeader>
                     </CollapsibleTrigger>
-                    <CardContent className="space-y-4 pt-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <CardContent className="space-y-4 px-4 pb-4 pt-0">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-4">
                             <div className="space-y-1">
                                 <p className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" /> Principal</p>
                                 <p className="font-semibold">{formatCurrency(loan.amount)}</p>
