@@ -76,6 +76,34 @@
     --sidebar-border: 217.2 32.6% 17.5%;
     --sidebar-ring: 212.7 26.8% 83.9%;
   }
+
+  .theme-green, .dark.theme-green {
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 142.1 76.2% 96.3%;
+    --ring: 142.1 76.2% 36.3%;
+    --chart-2: 142.1 76.2% 36.3%;
+  }
+
+  .theme-orange, .dark.theme-orange {
+    --primary: 24.6 95% 53.1%;
+    --primary-foreground: 24.6 95% 98.1%;
+    --ring: 24.6 95% 53.1%;
+    --chart-2: 24.6 95% 53.1%;
+  }
+
+  .theme-blue, .dark.theme-blue {
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 217.2 91.2% 99.8%;
+    --ring: 217.2 91.2% 59.8%;
+    --chart-2: 217.2 91.2% 59.8%;
+  }
+  
+  .theme-purple, .dark.theme-purple {
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 262.1 83.3% 97.8%;
+    --ring: 262.1 83.3% 57.8%;
+    --chart-2: 262.1 83.3% 57.8%;
+  }
 }
 
 @layer base {

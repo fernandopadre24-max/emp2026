@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useFinancialData } from '@/context/financial-context';
 import { Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeCustomizer } from '@/components/theme-customizer';
 
 export default function ConfiguracoesPage() {
   const { seedDatabase } = useFinancialData();
@@ -42,6 +43,18 @@ export default function ConfiguracoesPage() {
         description="Gerencie as configurações da sua conta e do aplicativo."
       />
       <div className="space-y-6">
+         <Card>
+          <CardHeader>
+            <CardTitle>Aparência</CardTitle>
+            <CardDescription>
+              Personalize a aparência do aplicativo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ThemeCustomizer />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Perfil</CardTitle>
